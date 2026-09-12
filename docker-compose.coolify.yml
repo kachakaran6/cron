@@ -6,9 +6,15 @@ services:
     image: ghcr.io/kachakaran6/cron-web:latest
     restart: always
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     expose:
       - '80'
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - default
       - coolify
@@ -18,8 +24,10 @@ services:
     image: ghcr.io/kachakaran6/cron-api:latest
     restart: always
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       PORT: 4000
       NODE_ENV: production
@@ -27,8 +35,13 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
-      FRONTEND_URL: ${FRONTEND_URL:-http://cron-saas.3.110.164.62.sslip.io}
+      FRONTEND_URL: ${FRONTEND_URL:-http://cron.3.110.164.62.sslip.io}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-b5e8f498c39d8461719c8fba5a4c9c1b72e90c8831ef09c0d123456789abcdef}
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:4000/api/v1/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - default
       - coolify
@@ -41,6 +54,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-cron_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cron_secure_pass_2026}
       POSTGRES_DB: ${POSTGRES_DB:-cron_saas}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cron_user} -d ${POSTGRES_DB:-cron_saas}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -51,6 +69,11 @@ services:
     image: redis:7-alpine
     restart: always
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_pass_2026}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-redis_secure_pass_2026} ping | grep PONG || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - redis_data:/data
     networks:
@@ -62,8 +85,10 @@ services:
     command: ["node", "apps/scheduler/dist/main.js"]
     restart: always
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-cron_user}:${POSTGRES_PASSWORD:-cron_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-cron_saas}
       REDIS_HOST: redis
@@ -78,8 +103,10 @@ services:
     command: ["node", "apps/worker/dist/main.js"]
     restart: always
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-cron_user}:${POSTGRES_PASSWORD:-cron_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-cron_saas}
       REDIS_HOST: redis
