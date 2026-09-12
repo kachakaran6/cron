@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  # Primary Relational Store
+  postgres:
+    image: postgres:16-alpine
+    container_name: cron_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cron_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cron_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-cron_saas}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cron_user -d cron_saas']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis for BullMQ Queues & Locks
+  redis:
+    image: redis:7-alpine
+    container_name: cron_redis
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_pass_2026}
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-redis_secure_pass_2026}', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # NestJS REST & OpenAPI Server
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      args:
+        SCOPE: api
+    container_name: cron_api
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cron_user}:${POSTGRES_PASSWORD:-cron_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-cron_saas}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+    ports:
+      - '4000:4000'
+
+  # Distributed Scheduler Service (Tick Producer)
+  scheduler:
+    build:
+      context: .
+      dockerfile: apps/scheduler/Dockerfile
+      args:
+        SCOPE: scheduler
+    container_name: cron_scheduler
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cron_user}:${POSTGRES_PASSWORD:-cron_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-cron_saas}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
+
+  # Execution Worker Pool (HTTP Dispatchers)
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+      args:
+        SCOPE: worker
+    deploy:
+      replicas: 3 # Horizontally scale to 3 worker processes out of the box
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cron_user}:${POSTGRES_PASSWORD:-cron_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-cron_saas}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
+      WORKER_CONCURRENCY: 50
+
+volumes:
+  postgres_data:
+  redis_data:
