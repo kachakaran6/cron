@@ -1,0 +1,144 @@
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
+import { db, users, organizations } from '@cron-saas/database';
+import { eq } from 'drizzle-orm';
+import * as bcrypt from 'bcryptjs';
+import * as jwt from 'jsonwebtoken';
+
+export interface JwtPayload {
+  sub: string;
+  email: string;
+  orgId: string;
+  iat?: number;
+  exp?: number;
+}
+
+@Injectable()
+export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
+  private get jwtSecret(): string {
+    return process.env.JWT_SECRET || 'samast_cron_jwt_secret_change_in_production_2026';
+  }
+
+  signToken(payload: Omit<JwtPayload, 'iat' | 'exp'>): string {
+    return jwt.sign(payload, this.jwtSecret, { expiresIn: '30d' });
+  }
+
+  verifyToken(token: string): JwtPayload {
+    try {
+      return jwt.verify(token, this.jwtSecret) as JwtPayload;
+    } catch {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+  }
+
+  async register(name: string, email: string, password: string) {
+    const normalized = email.toLowerCase().trim();
+
+    // Check if user already exists
+    const [existing] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, normalized))
+      .limit(1);
+
+    if (existing) {
+      throw new ConflictException('An account with this email already exists');
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Create user
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: normalized,
+        name: name.trim() || normalized.split('@')[0],
+        passwordHash,
+        emailVerified: false,
+      })
+      .returning();
+
+    // Create personal organization for the user
+    const slug = normalized.split('@')[0].replace(/[^a-z0-9]/gi, '-').toLowerCase() + '-' + user.id.slice(0, 8);
+    const [org] = await db
+      .insert(organizations)
+      .values({
+        name: `${user.name}'s Organization`,
+        slug,
+        ownerId: user.id,
+        planId: 'free',
+      })
+      .returning();
+
+    const token = this.signToken({ sub: user.id, email: user.email, orgId: org.id });
+
+    return {
+      token,
+      user: { id: user.id, email: user.email, name: user.name },
+      organization: { id: org.id, name: org.name, slug: org.slug },
+    };
+  }
+
+  async login(email: string, password: string) {
+    const normalized = email.toLowerCase().trim();
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalized))
+      .limit(1);
+
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // Find user's organization
+    const [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.ownerId, user.id))
+      .limit(1);
+
+    const orgId = org?.id || '00000000-0000-0000-0000-000000000000';
+
+    const token = this.signToken({ sub: user.id, email: user.email, orgId });
+
+    return {
+      token,
+      user: { id: user.id, email: user.email, name: user.name },
+      organization: org ? { id: org.id, name: org.name, slug: org.slug } : null,
+    };
+  }
+
+  async getMe(userId: string) {
+    const [user] = await db
+      .select({ id: users.id, email: users.email, name: users.name, createdAt: users.createdAt })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.ownerId, userId))
+      .limit(1);
+
+    return {
+      user,
+      organization: org ? { id: org.id, name: org.name, slug: org.slug, planId: org.planId } : null,
+    };
+  }
+}

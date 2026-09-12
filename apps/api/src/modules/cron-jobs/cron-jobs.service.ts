@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
 import { db, cronJobs, cronJobRuns } from '@cron-saas/database';
 import { eq, desc } from 'drizzle-orm';
 import cronParser from 'cron-parser';
@@ -7,20 +7,35 @@ import { CreateCronJobDto } from './dto/create-cron-job.dto';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 
 @Injectable()
-export class CronJobsService {
-  private executionQueue: Queue;
+export class CronJobsService implements OnModuleInit {
+  private readonly logger = new Logger(CronJobsService.name);
+  private executionQueue: Queue | null = null;
 
-  constructor(private readonly entitlementsService: EntitlementsService) {
-    this.executionQueue = new Queue('cron-execution-queue', {
-      connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: Number(process.env.REDIS_PORT) || 6379,
-        password: process.env.REDIS_PASSWORD || undefined,
-      },
-    });
-    this.executionQueue.on('error', (err) => {
-      console.error('[CronJobsService] Redis Queue error:', err.message);
-    });
+  constructor(private readonly entitlementsService: EntitlementsService) {}
+
+  /**
+   * Initialize BullMQ queue lazily in lifecycle hook so Redis connection errors
+   * do NOT crash the NestJS bootstrap process.
+   */
+  onModuleInit() {
+    try {
+      this.executionQueue = new Queue('cron-execution-queue', {
+        connection: {
+          host: process.env.REDIS_HOST || 'localhost',
+          port: Number(process.env.REDIS_PORT) || 6379,
+          password: process.env.REDIS_PASSWORD || undefined,
+        },
+      });
+
+      this.executionQueue.on('error', (err) => {
+        this.logger.error(`Redis Queue error: ${err.message}`);
+      });
+
+      this.logger.log('Execution queue connected to Redis');
+    } catch (err: any) {
+      this.logger.error(`Failed to initialize BullMQ queue: ${err.message}. Execution queue will be unavailable.`);
+      this.executionQueue = null;
+    }
   }
 
   private calculateNextRun(schedule: string, timezone = 'UTC'): Date {
@@ -81,6 +96,10 @@ export class CronJobsService {
 
   async triggerImmediateRun(id: string) {
     const job = await this.getJobById(id);
+
+    if (!this.executionQueue) {
+      throw new Error('Execution queue is not available. Redis may be unreachable.');
+    }
 
     await this.executionQueue.add(
       'execute-http-job',

@@ -1,14 +1,26 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import crypto from 'node:crypto';
+import * as jwt from 'jsonwebtoken';
 import { db, apiKeys } from '@cron-saas/database';
 import { eq } from 'drizzle-orm';
 
+/**
+ * CombinedAuthGuard
+ * Supports two auth mechanisms (evaluated in priority order):
+ *   1. API Key: X-Api-Key header (cr_live_...) or Authorization: Bearer cr_live_...
+ *   2. JWT:     Authorization: Bearer <jwt-token>
+ *
+ * In production, falls back to 401 if neither is valid.
+ * In development (NODE_ENV !== 'production'), falls back to a default org ID.
+ */
 @Injectable()
 export class CombinedAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
     const apiKeyHeader = req.headers['x-api-key'] || this.extractBearer(req.headers['authorization']);
+    const authorizationHeader = req.headers['authorization'];
 
+    // 1. Try API Key
     if (apiKeyHeader && apiKeyHeader.startsWith('cr_live_')) {
       const hashed = crypto.createHash('sha256').update(apiKeyHeader).digest('hex');
 
@@ -26,10 +38,31 @@ export class CombinedAuthGuard implements CanActivate {
       }
     }
 
-    req.organizationId = process.env.DEFAULT_ORG_ID || '00000000-0000-0000-0000-000000000000';
-    req.userId = process.env.DEFAULT_USER_ID || '00000000-0000-0000-0000-000000000001';
-    req.authType = 'DEVELOPMENT_FALLBACK';
-    return true;
+    // 2. Try JWT Bearer
+    const bearerToken = this.extractBearer(authorizationHeader);
+    if (bearerToken && !bearerToken.startsWith('cr_live_')) {
+      try {
+        const jwtSecret = process.env.JWT_SECRET || 'samast_cron_jwt_secret_change_in_production_2026';
+        const payload = jwt.verify(bearerToken, jwtSecret) as any;
+        req.userId = payload.sub;
+        req.userEmail = payload.email;
+        req.organizationId = payload.orgId;
+        req.authType = 'JWT';
+        return true;
+      } catch {
+        // Invalid JWT — fall through
+      }
+    }
+
+    // 3. Development fallback (never expose in production)
+    if (process.env.NODE_ENV !== 'production') {
+      req.organizationId = process.env.DEFAULT_ORG_ID || '00000000-0000-0000-0000-000000000000';
+      req.userId = process.env.DEFAULT_USER_ID || '00000000-0000-0000-0000-000000000001';
+      req.authType = 'DEVELOPMENT_FALLBACK';
+      return true;
+    }
+
+    return false;
   }
 
   private extractBearer(authHeader?: string): string | null {

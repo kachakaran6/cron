@@ -41,13 +41,14 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
       FRONTEND_URL: ${FRONTEND_URL:-https://cron.samast.pro}
+      JWT_SECRET: ${JWT_SECRET:-samast_cron_jwt_secret_change_in_production_2026}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-b5e8f498c39d8461719c8fba5a4c9c1b72e90c8831ef09c0d123456789abcdef}
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:4000/api/v1/health || exit 1"]
       interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      timeout: 10s
+      retries: 8
+      start_period: 60s
     networks:
       - default
       - coolify
@@ -84,43 +85,6 @@ services:
       start_period: 15s
     volumes:
       - redis_data:/data
-    networks:
-      - default
-
-  # 5. Distributed Scheduler Microservice
-  scheduler:
-    image: ghcr.io/kachakaran6/cron-api:latest
-    command: ["node", "apps/scheduler/dist/main.js"]
-    restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-cron_user}:${POSTGRES_PASSWORD:-cron_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-cron_saas}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
-    networks:
-      - default
-
-  # 6. Isolated HTTP Execution Worker Pool
-  worker:
-    image: ghcr.io/kachakaran6/cron-api:latest
-    command: ["node", "apps/worker/dist/main.js"]
-    restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-cron_user}:${POSTGRES_PASSWORD:-cron_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-cron_saas}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
-      WORKER_CONCURRENCY: 50
     networks:
       - default
 

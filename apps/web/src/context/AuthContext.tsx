@@ -1,57 +1,68 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { apiLogin, apiRegister, apiGetMe, setAuthToken, getAuthToken, clearAuthToken } from '../services/api';
 
 export interface User {
   id: string;
   email: string;
-  name: string;
+  name: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, pass: string) => Promise<void>;
-  register: (name: string, email: string, pass: string) => Promise<void>;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('samast_cron_auth');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { return null; }
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // On mount: validate existing token by hitting /auth/me
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      setIsLoading(false);
+      return;
     }
-    return { id: 'usr_default_1', email: 'admin@samast.pro', name: 'Infrastructure Admin' };
-  });
 
-  const login = async (email: string, pass: string) => {
-    const mockUser: User = {
-      id: 'usr_' + Date.now(),
-      email,
-      name: email.split('@')[0] || 'User',
-    };
-    setUser(mockUser);
-    localStorage.setItem('samast_cron_auth', JSON.stringify(mockUser));
-  };
+    apiGetMe()
+      .then(({ user }) => {
+        setUser({ id: user.id, email: user.email, name: user.name });
+      })
+      .catch(() => {
+        // Token is invalid or expired — clear it
+        clearAuthToken();
+        setUser(null);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
 
-  const register = async (name: string, email: string, pass: string) => {
-    const newUser: User = {
-      id: 'usr_' + Date.now(),
-      email,
-      name: name || email.split('@')[0],
-    };
-    setUser(newUser);
-    localStorage.setItem('samast_cron_auth', JSON.stringify(newUser));
-  };
+  const login = useCallback(async (email: string, password: string) => {
+    const data = await apiLogin(email, password);
+    setAuthToken(data.token);
+    setUser({ id: data.user.id, email: data.user.email, name: data.user.name });
+  }, []);
 
-  const logout = () => {
+  const register = useCallback(async (name: string, email: string, password: string) => {
+    const data = await apiRegister(name, email, password);
+    setAuthToken(data.token);
+    setUser({ id: data.user.id, email: data.user.email, name: data.user.name });
+  }, []);
+
+  const logout = useCallback(() => {
+    clearAuthToken();
     setUser(null);
-    localStorage.removeItem('samast_cron_auth');
-  };
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
