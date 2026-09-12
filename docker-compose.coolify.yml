@@ -9,8 +9,14 @@ services:
     restart: always
     depends_on:
       - api
-    ports:
-      - '80:80'
+    expose:
+      - '80'
+    labels:
+      - 'coolify.managed=true'
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.cron-web.rule=Host(`b9isp2rfba3f3nrouxuqvqsr.137.23.49.73.sslip.io`)'
+      - 'traefik.http.routers.cron-web.entrypoints=http'
+      - 'traefik.http.services.cron-web.loadbalancer.server.port=80'
 
   # 2. NestJS REST & OpenAPI API Server
   api:
