@@ -15,7 +15,9 @@ import {
   LogOut,
   User as UserIcon,
   Menu,
-  X
+  X,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -26,6 +28,9 @@ export default function AppShell() {
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('samast_sidebar_collapsed') === 'true';
+  });
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,6 +42,14 @@ export default function AppShell() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('samast_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   const navItems = [
     { label: 'Overview', to: '/dashboard', icon: LayoutGrid, exact: true },
@@ -61,7 +74,7 @@ export default function AppShell() {
     <div className="h-screen overflow-hidden flex flex-col font-sans transition-colors bg-slate-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 selection:bg-zinc-300 dark:selection:bg-zinc-800">
       {/* Compact Header Bar */}
       <header className="h-14 border-b px-3 sm:px-6 flex items-center justify-between flex-shrink-0 bg-white/95 dark:bg-zinc-950/95 backdrop-blur border-zinc-200 dark:border-zinc-800 shadow-xs z-30">
-        <div className="flex items-center gap-3 sm:gap-6">
+        <div className="flex items-center gap-3 sm:gap-4">
           {/* Mobile Hamburger Toggle */}
           <button
             type="button"
@@ -70,6 +83,16 @@ export default function AppShell() {
             aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+
+          {/* Desktop Collapsible Sidebar Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="hidden md:flex p-1.5 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
           </button>
 
           <Link to="/dashboard" className="flex items-center gap-2.5 group">
@@ -328,14 +351,20 @@ export default function AppShell() {
         </div>
       </div>
 
-      {/* Main Layout Body (Locked Layout, Body Content Scrollable) */}
+      {/* Main Layout Body (Locked Layout, Collapsible Sidebar, Scrollable Body) */}
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Fixed Navigation Sidebar (Desktop) */}
-        <aside className="w-56 h-full flex-shrink-0 border-r p-3 hidden md:flex flex-col justify-between overflow-y-auto border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-          <div className="space-y-0.5">
-            <div className="text-[10px] font-mono font-semibold text-zinc-500 uppercase tracking-wider px-2 py-1.5 mb-1">
-              Platform
-            </div>
+        {/* Desktop Collapsible Navigation Sidebar */}
+        <aside
+          className={`${
+            sidebarCollapsed ? 'w-16' : 'w-56'
+          } h-full flex-shrink-0 border-r p-3 hidden md:flex flex-col justify-between overflow-y-auto transition-all duration-300 ease-in-out border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950`}
+        >
+          <div className="space-y-1">
+            {!sidebarCollapsed && (
+              <div className="text-[10px] font-mono font-semibold text-zinc-500 uppercase tracking-wider px-2 py-1.5 mb-1 animate-in fade-in duration-200">
+                Platform
+              </div>
+            )}
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = item.exact 
@@ -346,22 +375,29 @@ export default function AppShell() {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors ${
+                  title={item.label}
+                  className={`flex items-center gap-2.5 py-2 rounded-md text-xs font-medium transition-all ${
                     isActive
-                      ? 'nav-active-accent pl-[9px]'
+                      ? 'nav-active-accent font-semibold'
                       : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                  }`}
+                  } ${sidebarCollapsed ? 'justify-center px-0' : 'px-2.5'}`}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span>{item.label}</span>
+                  {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                 </NavLink>
               );
             })}
           </div>
 
-          <div className="px-2 py-2 border-t border-zinc-200 dark:border-zinc-800/80 flex items-center justify-between text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
-            <span>Samast Engine</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900">v1.4.2</span>
+          <div
+            className={`px-2 py-2 border-t border-zinc-200 dark:border-zinc-800/80 flex items-center text-[11px] font-mono text-zinc-500 dark:text-zinc-400 ${
+              sidebarCollapsed ? 'justify-center' : 'justify-between'
+            }`}
+          >
+            {!sidebarCollapsed && <span>Samast Engine</span>}
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 font-bold">
+              {sidebarCollapsed ? 'v1.4' : 'v1.4.2'}
+            </span>
           </div>
         </aside>
 
