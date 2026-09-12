@@ -3,9 +3,7 @@ version: '3.8'
 services:
   # 1. Web Dashboard (React SPA + Nginx Reverse Proxy to API)
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
+    image: ghcr.io/kachakaran6/cron-web:latest
     restart: always
     depends_on:
       - api
@@ -17,11 +15,7 @@ services:
 
   # 2. NestJS REST & OpenAPI API Server
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-      args:
-        SCOPE: api
+    image: ghcr.io/kachakaran6/cron-api:latest
     restart: always
     depends_on:
       - postgres
@@ -33,7 +27,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
-      FRONTEND_URL: ${FRONTEND_URL:-http://7srwaez06orjz74tw4mnkvi1.13.207.216.68.sslip.io}
+      FRONTEND_URL: ${FRONTEND_URL:-http://cron-saas.13.207.216.68.sslip.io}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-b5e8f498c39d8461719c8fba5a4c9c1b72e90c8831ef09c0d123456789abcdef}
     networks:
       - default
@@ -64,11 +58,8 @@ services:
 
   # 5. Distributed Scheduler Microservice
   scheduler:
-    build:
-      context: .
-      dockerfile: apps/scheduler/Dockerfile
-      args:
-        SCOPE: scheduler
+    image: ghcr.io/kachakaran6/cron-api:latest
+    command: ["node", "apps/scheduler/dist/main.js"]
     restart: always
     depends_on:
       - postgres
@@ -83,11 +74,8 @@ services:
 
   # 6. Isolated HTTP Execution Worker Pool
   worker:
-    build:
-      context: .
-      dockerfile: apps/worker/Dockerfile
-      args:
-        SCOPE: worker
+    image: ghcr.io/kachakaran6/cron-api:latest
+    command: ["node", "apps/worker/dist/main.js"]
     restart: always
     depends_on:
       - postgres
