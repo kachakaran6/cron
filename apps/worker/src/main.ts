@@ -7,6 +7,10 @@ worker.on('ready', () => {
   console.log('[Worker] Connected to Redis and ready to process jobs.');
 });
 
+worker.on('error', (err) => {
+  console.error('[Worker] Redis connection error:', err.message);
+});
+
 worker.on('failed', (job, err) => {
   console.error(`[Worker] Job ${job?.id} failed: ${err.message}`);
 });

@@ -18,6 +18,9 @@ export class CronJobsService {
         password: process.env.REDIS_PASSWORD || undefined,
       },
     });
+    this.executionQueue.on('error', (err) => {
+      console.error('[CronJobsService] Redis Queue error:', err.message);
+    });
   }
 
   private calculateNextRun(schedule: string, timezone = 'UTC'): Date {

@@ -14,6 +14,9 @@ export class SchedulerService {
         password: process.env.REDIS_PASSWORD || undefined,
       },
     });
+    this.executionQueue.on('error', (err) => {
+      console.error('[Scheduler] Redis Queue error:', err.message);
+    });
   }
 
   async processUpcomingJobs() {
