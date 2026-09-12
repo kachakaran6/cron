@@ -1,19 +1,29 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Code, ExternalLink, ShieldCheck, Clock, Terminal, Activity } from 'lucide-react';
+import { ArrowRight, ExternalLink, ShieldCheck, Clock, Terminal, Activity, Sun, Moon, Lock } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function LandingPage() {
   const [codeTab, setCodeTab] = useState<'curl' | 'node' | 'python'>('curl');
+  const { theme, toggleTheme } = useTheme();
+  const { isAuthenticated } = useAuth();
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white flex flex-col">
+    <div className={`min-h-screen font-sans selection:bg-zinc-800 flex flex-col transition-colors ${
+      theme === 'dark' ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'
+    }`}>
       {/* Header Bar */}
-      <header className="h-14 border-b border-zinc-800 bg-zinc-950 px-6 flex items-center justify-between sticky top-0 z-40">
+      <header className={`h-14 border-b px-6 flex items-center justify-between sticky top-0 z-40 ${
+        theme === 'dark' ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-200 bg-white'
+      }`}>
         <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded bg-zinc-100 text-zinc-950 flex items-center justify-center font-mono font-bold text-xs">
+          <div className={`w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs ${
+            theme === 'dark' ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-900 text-zinc-100'
+          }`}>
             SC
           </div>
-          <span className="font-semibold text-sm text-zinc-100 tracking-tight">
+          <span className="font-semibold text-sm tracking-tight">
             Samast Cron
           </span>
         </div>
@@ -28,25 +38,51 @@ export default function LandingPage() {
           </a>
         </nav>
 
-        <Link
-          to="/dashboard/schedules"
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded bg-zinc-100 text-zinc-950 hover:bg-white transition-colors"
-        >
-          <span>Open Console</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex items-center gap-3 text-xs">
+          {/* Light / Dark Mode Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className={`p-1.5 rounded border transition-colors ${
+              theme === 'dark' ? 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white' : 'border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+            }`}
+            title="Toggle Light / Dark Mode"
+          >
+            {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+          </button>
+
+          {!isAuthenticated && (
+            <Link
+              to="/login"
+              className="text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 font-medium"
+            >
+              Sign In
+            </Link>
+          )}
+
+          <Link
+            to={isAuthenticated ? "/dashboard/schedules" : "/register"}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded transition-colors ${
+              theme === 'dark' ? 'bg-zinc-100 text-zinc-950 hover:bg-white' : 'bg-zinc-900 text-zinc-100 hover:bg-zinc-800'
+            }`}
+          >
+            <span>{isAuthenticated ? 'Open Console' : 'Get Started'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1">
         {/* Hero Section */}
         <section className="py-20 px-6 max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded border border-zinc-800 bg-zinc-900 text-xs font-mono text-zinc-400 mb-6">
+          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded border text-xs font-mono mb-6 ${
+            theme === 'dark' ? 'border-zinc-800 bg-zinc-900 text-zinc-400' : 'border-zinc-200 bg-zinc-100 text-zinc-600'
+          }`}>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <span>Infrastructure Status: 100% Operational</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-zinc-100 max-w-3xl mx-auto leading-tight mb-4">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight max-w-3xl mx-auto leading-tight mb-4">
             Reliable scheduled HTTP requests.
           </h1>
 
@@ -56,8 +92,10 @@ export default function LandingPage() {
 
           <div className="flex items-center justify-center gap-3">
             <Link
-              to="/dashboard/schedules"
-              className="px-4 py-2 rounded bg-zinc-100 text-zinc-950 font-semibold text-xs hover:bg-white transition-colors flex items-center gap-1.5"
+              to={isAuthenticated ? "/dashboard/schedules" : "/register"}
+              className={`px-4 py-2 rounded font-semibold text-xs transition-colors flex items-center gap-1.5 ${
+                theme === 'dark' ? 'bg-zinc-100 text-zinc-950 hover:bg-white' : 'bg-zinc-900 text-zinc-100 hover:bg-zinc-800'
+              }`}
             >
               <span>Manage Schedules</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -67,7 +105,9 @@ export default function LandingPage() {
               href="/api/docs"
               target="_blank"
               rel="noreferrer"
-              className="px-4 py-2 rounded border border-zinc-800 bg-zinc-900 text-zinc-300 font-semibold text-xs hover:text-zinc-100 hover:bg-zinc-800 transition-colors flex items-center gap-1.5"
+              className={`px-4 py-2 rounded border text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                theme === 'dark' ? 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white' : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100'
+              }`}
             >
               <Terminal className="w-3.5 h-3.5 text-zinc-400" />
               <span>Swagger API Specs</span>
@@ -75,148 +115,51 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Product Interface Preview Section */}
-        <section className="py-12 px-6 max-w-5xl mx-auto">
-          <div className="border border-zinc-800 rounded-lg bg-zinc-950 overflow-hidden shadow-2xl">
-            <div className="px-4 py-3 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between text-xs text-zinc-400 font-mono">
-              <span>Schedules — Console Overview</span>
-              <span className="text-emerald-400">● 2 Active Schedules</span>
-            </div>
-            
-            <div className="p-4 space-y-3 font-sans text-xs">
-              <table className="w-full text-left">
-                <thead className="text-[11px] font-mono uppercase text-zinc-500 border-b border-zinc-800">
-                  <tr>
-                    <th className="py-2">Name</th>
-                    <th className="py-2">Target</th>
-                    <th className="py-2">Schedule</th>
-                    <th className="py-2">Last Run</th>
-                    <th className="py-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/60 font-mono text-zinc-300">
-                  <tr>
-                    <td className="py-2.5 font-sans font-medium text-zinc-100">Database Backup Sync</td>
-                    <td className="py-2.5 text-zinc-400">api.example.com/backup</td>
-                    <td className="py-2.5">0 2 * * *</td>
-                    <td className="py-2.5 text-zinc-400">2 min ago</td>
-                    <td className="py-2.5 text-emerald-400 font-sans text-xs">✓ Active</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2.5 font-sans font-medium text-zinc-100">System Health Monitor</td>
-                    <td className="py-2.5 text-zinc-400">example.com/health</td>
-                    <td className="py-2.5">*/5 * * * *</td>
-                    <td className="py-2.5 text-zinc-400">1 min ago</td>
-                    <td className="py-2.5 text-emerald-400 font-sans text-xs">✓ Active</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        {/* Feature Grid */}
-        <section id="features" className="py-16 px-6 max-w-5xl mx-auto border-t border-zinc-900">
+        {/* Feature Section */}
+        <section id="features" className={`py-16 px-6 max-w-5xl mx-auto border-t ${
+          theme === 'dark' ? 'border-zinc-900' : 'border-zinc-200'
+        }`}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-5 border border-zinc-800 rounded bg-zinc-950 space-y-2">
+            <div className={`p-5 border rounded space-y-2 ${
+              theme === 'dark' ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-200 bg-white'
+            }`}>
               <Clock className="w-5 h-5 text-zinc-400" />
-              <h3 className="text-sm font-semibold text-zinc-100">Cron Expressions</h3>
+              <h3 className="text-sm font-semibold">Cron Expressions</h3>
               <p className="text-xs text-zinc-400 leading-relaxed">
                 Supports standard 5-part cron syntax with real-time schedule translation and execution window previews.
               </p>
             </div>
 
-            <div className="p-5 border border-zinc-800 rounded bg-zinc-950 space-y-2">
+            <div className={`p-5 border rounded space-y-2 ${
+              theme === 'dark' ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-200 bg-white'
+            }`}>
               <Activity className="w-5 h-5 text-zinc-400" />
-              <h3 className="text-sm font-semibold text-zinc-100">Execution History</h3>
+              <h3 className="text-sm font-semibold">Execution History</h3>
               <p className="text-xs text-zinc-400 leading-relaxed">
                 Inspect every HTTP request status code, response time, request body, headers, and failure traces.
               </p>
             </div>
 
-            <div className="p-5 border border-zinc-800 rounded bg-zinc-950 space-y-2">
+            <div className={`p-5 border rounded space-y-2 ${
+              theme === 'dark' ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-200 bg-white'
+            }`}>
               <ShieldCheck className="w-5 h-5 text-zinc-400" />
-              <h3 className="text-sm font-semibold text-zinc-100">Worker Sandboxing</h3>
+              <h3 className="text-sm font-semibold">Worker Sandboxing</h3>
               <p className="text-xs text-zinc-400 leading-relaxed">
                 SSRF protected worker pools enforce metadata blocking and strict timeouts on all HTTP calls.
               </p>
             </div>
           </div>
         </section>
-
-        {/* Code & API Section */}
-        <section id="code" className="py-16 px-6 max-w-5xl mx-auto border-t border-zinc-900">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-zinc-100">REST API Integration</h2>
-                <p className="text-xs text-zinc-400">Programmatically create and query schedules via Bearer API keys.</p>
-              </div>
-
-              <div className="flex gap-1 font-mono text-xs">
-                {(['curl', 'node', 'python'] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setCodeTab(tab)}
-                    className={`px-2.5 py-1 rounded ${
-                      codeTab === tab ? 'bg-zinc-800 text-zinc-100 font-semibold' : 'text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="border border-zinc-800 rounded bg-zinc-950 overflow-hidden font-mono text-xs p-4 text-zinc-300">
-              <pre className="overflow-x-auto leading-relaxed">
-                {codeTab === 'curl' && `curl -X POST "https://cron.samast.pro/api/v1/jobs" \\
-  -H "Authorization: Bearer cron_key_..." \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "name": "Database Backup",
-    "schedule": "0 2 * * *",
-    "url": "https://api.example.com/backup",
-    "method": "POST"
-  }'`}
-
-                {codeTab === 'node' && `const res = await fetch('https://cron.samast.pro/api/v1/jobs', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer cron_key_...',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    name: 'Database Backup',
-    schedule: '0 2 * * *',
-    url: 'https://api.example.com/backup'
-  })
-});
-const data = await res.json();`}
-
-                {codeTab === 'python' && `import requests
-
-res = requests.post(
-    "https://cron.samast.pro/api/v1/jobs",
-    headers={"Authorization": "Bearer cron_key_..."},
-    json={
-        "name": "Database Backup",
-        "schedule": "0 2 * * *",
-        "url": "https://api.example.com/backup"
-    }
-)
-print(res.json())`}
-              </pre>
-            </div>
-          </div>
-        </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-800 bg-zinc-950 py-8 px-6 text-xs text-zinc-500">
+      <footer className={`border-t py-8 px-6 text-xs text-zinc-500 ${
+        theme === 'dark' ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-200 bg-zinc-100'
+      }`}>
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <span className="font-semibold text-zinc-300">Samast Cron</span> — Scheduled HTTP Infrastructure.
+            <span className="font-semibold text-zinc-400">Samast Cron</span> — Scheduled HTTP Infrastructure.
           </div>
 
           <div className="flex items-center gap-6">
