@@ -13,6 +13,7 @@ import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import DocsPage from './pages/DocsPage';
 import PublicStatusPage from './pages/PublicStatusPage';
+import OAuthCallbackPage from './pages/OAuthCallbackPage';
 
 import OverviewPage from './features/schedules/OverviewPage';
 import SchedulesListPage from './features/schedules/SchedulesListPage';
@@ -50,6 +51,7 @@ export default function App() {
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/docs" element={<DocsPage />} />
               <Route path="/status/:slug" element={<PublicStatusPage />} />
+              <Route path="/oauth-callback" element={<OAuthCallbackPage />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<AppShell />}>

@@ -29,32 +29,8 @@ export default function LoginPage() {
     }
   };
 
-  const handleOAuth = async (provider: 'google' | 'github') => {
-    setError('');
-    setIsSubmitting(true);
-    try {
-      // Direct OAuth authentication or OAuth prompt
-      const oauthEmail = prompt(
-        `Enter your ${provider === 'google' ? 'Google' : 'GitHub'} account email:`,
-        provider === 'google' ? 'kachakaran6@gmail.com' : 'developer@github.com'
-      );
-      if (!oauthEmail) {
-        setIsSubmitting(false);
-        return;
-      }
-
-      await oauthLogin({
-        provider,
-        email: oauthEmail,
-        name: oauthEmail.split('@')[0],
-        providerId: `${provider}-${Date.now()}`,
-      });
-      navigate('/dashboard/schedules');
-    } catch (err: any) {
-      setError(err?.message || `Failed to sign in with ${provider}`);
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleOAuth = (provider: 'google' | 'github') => {
+    window.location.href = `/api/v1/auth/${provider}`;
   };
 
   return (

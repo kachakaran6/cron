@@ -251,4 +251,117 @@ export class AuthService {
       organization: { id: org.id, name: org.name, slug: org.slug, planId: org.planId },
     };
   }
+
+  getGoogleAuthUrl(): string {
+    const redirectUri = `${process.env.APP_PUBLIC_URL || 'https://cron.samast.pro'}/api/v1/auth/google/callback`;
+    const clientId = process.env.GOOGLE_CLIENT_ID || '';
+    return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent('openid email profile')}&access_type=offline&prompt=consent`;
+  }
+
+  async handleGoogleCallback(code: string) {
+    const redirectUri = `${process.env.APP_PUBLIC_URL || 'https://cron.samast.pro'}/api/v1/auth/google/callback`;
+    const clientId = process.env.GOOGLE_CLIENT_ID || '';
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    const tokenData = await tokenRes.json();
+    if (!tokenRes.ok || !tokenData.access_token) {
+      throw new UnauthorizedException(tokenData.error_description || 'Failed to exchange Google OAuth authorization code');
+    }
+
+    const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+
+    const userData = await userRes.json();
+    if (!userRes.ok || !userData.email) {
+      throw new UnauthorizedException('Failed to fetch user profile from Google');
+    }
+
+    return this.oauthLogin({
+      provider: 'google',
+      email: userData.email,
+      name: userData.name || userData.email.split('@')[0],
+      providerId: userData.sub,
+      image: userData.picture || undefined,
+    });
+  }
+
+  getGithubAuthUrl(): string {
+    const redirectUri = `${process.env.APP_PUBLIC_URL || 'https://cron.samast.pro'}/api/v1/auth/github/callback`;
+    const clientId = process.env.GITHUB_CLIENT_ID || '';
+    return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email`;
+  }
+
+  async handleGithubCallback(code: string) {
+    const redirectUri = `${process.env.APP_PUBLIC_URL || 'https://cron.samast.pro'}/api/v1/auth/github/callback`;
+    const clientId = process.env.GITHUB_CLIENT_ID || '';
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET || '';
+
+    const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        redirect_uri: redirectUri,
+      }),
+    });
+
+    const tokenData = await tokenRes.json();
+    if (!tokenRes.ok || !tokenData.access_token) {
+      throw new UnauthorizedException(tokenData.error_description || 'Failed to exchange GitHub OAuth authorization code');
+    }
+
+    const userRes = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+        'User-Agent': 'Samast-Cron-OAuth',
+      },
+    });
+
+    const userData = await userRes.json();
+    let email = userData.email;
+
+    if (!email) {
+      const emailsRes = await fetch('https://api.github.com/user/emails', {
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          'User-Agent': 'Samast-Cron-OAuth',
+        },
+      });
+      const emails = await emailsRes.json();
+      if (Array.isArray(emails)) {
+        const primary = emails.find((e: any) => e.primary && e.verified) || emails[0];
+        if (primary) email = primary.email;
+      }
+    }
+
+    if (!email) {
+      throw new UnauthorizedException('Failed to retrieve primary email address from GitHub account');
+    }
+
+    return this.oauthLogin({
+      provider: 'github',
+      email,
+      name: userData.name || userData.login || email.split('@')[0],
+      providerId: String(userData.id),
+      image: userData.avatar_url || undefined,
+    });
+  }
 }
