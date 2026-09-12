@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { db } from '@cron-saas/database';
-import { cronJobs, cronJobRuns } from '@cron-saas/database/schema';
+import { db, cronJobs, cronJobRuns } from '@cron-saas/database';
 import { eq, desc } from 'drizzle-orm';
 import cronParser from 'cron-parser';
 import { Queue } from 'bullmq';

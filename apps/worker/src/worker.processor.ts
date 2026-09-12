@@ -1,8 +1,7 @@
 import { Worker, Job } from 'bullmq';
 import { request } from 'undici';
 import { validateSafeUrl } from './security/safe-dispatcher';
-import { db } from '@cron-saas/database';
-import { cronJobRuns, cronJobs } from '@cron-saas/database/schema';
+import { db, cronJobRuns, cronJobs } from '@cron-saas/database';
 import { eq } from 'drizzle-orm';
 import os from 'node:os';
 import { jobExecutionsTotal, jobExecutionDuration } from './metrics';

@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { db } from '@cron-saas/database';
-import { apiKeys } from '@cron-saas/database/schema';
+import { db, apiKeys } from '@cron-saas/database';
 import { eq, desc } from 'drizzle-orm';
 import crypto from 'node:crypto';
 
@@ -26,7 +25,7 @@ export class ApiKeysService {
     return {
       id: keyRecord.id,
       name: keyRecord.name,
-      apiKey: fullKey, // Revealed only once upon creation
+      apiKey: fullKey,
       createdAt: keyRecord.createdAt,
     };
   }

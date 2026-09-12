@@ -1,6 +1,5 @@
 import { Queue } from 'bullmq';
-import { db } from '@cron-saas/database';
-import { cronJobs } from '@cron-saas/database/schema';
+import { db, cronJobs } from '@cron-saas/database';
 import { lte, and, eq } from 'drizzle-orm';
 import { calculateNextRun } from './utils';
 

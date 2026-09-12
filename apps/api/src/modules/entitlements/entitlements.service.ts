@@ -1,6 +1,5 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
-import { db } from '@cron-saas/database';
-import { cronJobs } from '@cron-saas/database/schema';
+import { db, cronJobs } from '@cron-saas/database';
 import { count, eq } from 'drizzle-orm';
 
 export interface PlanCapabilities {
