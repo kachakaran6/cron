@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
-import { db, cronJobs, cronJobRuns, organizations } from '@cron-saas/database';
+import { db, cronJobs, cronJobRuns, organizations, notificationChannels } from '@cron-saas/database';
 import { eq, desc, and, lte } from 'drizzle-orm';
 import * as cronParser from 'cron-parser';
 import { Queue } from 'bullmq';
@@ -65,6 +65,12 @@ export class CronJobsService implements OnModuleInit {
         this.logger.warn(`Scheduler tick error: ${err.message}`);
       }
     }, 10000);
+
+    // Initial 30-day retention cleanup on startup and recurring every 6 hours
+    this.purgeOldLogs().catch(() => {});
+    setInterval(() => {
+      this.purgeOldLogs().catch(() => {});
+    }, 6 * 60 * 60 * 1000);
   }
 
   calculateNextRun(schedule: string, timezone = 'UTC'): Date {
@@ -390,6 +396,11 @@ export class CronJobsService implements OnModuleInit {
 
     this.logger.log(`Executed job ${job.id} -> HTTP ${httpStatus} (${status}) in ${durationMs}ms`);
 
+    // Evaluate alert rules and notify configured channels
+    this.evaluateAlertsAndNotify(job, insertedRun).catch((err) => {
+      this.logger.error(`Alert evaluation error for ${job.id}: ${err.message}`);
+    });
+
     return {
       ...insertedRun,
       statusCode: httpStatus,
@@ -430,4 +441,140 @@ export class CronJobsService implements OnModuleInit {
       durationMs: runResult.durationMs,
     };
   }
+
+  private async purgeOldLogs() {
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      await db.delete(cronJobRuns).where(lte(cronJobRuns.startedAt, thirtyDaysAgo));
+      this.logger.log('Purged cron execution logs older than 30 days.');
+    } catch (err: any) {
+      this.logger.warn(`Retention purge error: ${err.message}`);
+    }
+  }
+
+  private async evaluateAlertsAndNotify(
+    job: typeof cronJobs.$inferSelect,
+    run: typeof cronJobRuns.$inferSelect
+  ) {
+    try {
+      // 1. Fetch recent runs for this job to count consecutive failures
+      const recentRuns = await db
+        .select({ status: cronJobRuns.status, startedAt: cronJobRuns.startedAt })
+        .from(cronJobRuns)
+        .where(eq(cronJobRuns.cronJobId, job.id))
+        .orderBy(desc(cronJobRuns.startedAt))
+        .limit(15);
+
+      if (recentRuns.length === 0) return;
+
+      let consecutiveFailures = 0;
+      for (const r of recentRuns) {
+        if (r.status !== 'SUCCESS') consecutiveFailures++;
+        else break;
+      }
+
+      const isCurrentFailed = run.status !== 'SUCCESS';
+      const previousRun = recentRuns[1];
+      const isRecovery = !isCurrentFailed && previousRun && previousRun.status !== 'SUCCESS';
+      const isFailureThresholdHit =
+        isCurrentFailed &&
+        job.notifyOnFailure !== false &&
+        consecutiveFailures >= (job.failureThreshold || 1);
+      const shouldDisable =
+        isCurrentFailed && job.notifyOnDisable !== false && consecutiveFailures >= 10;
+
+      if (shouldDisable && job.enabled) {
+        await db.update(cronJobs).set({ enabled: false }).where(eq(cronJobs.id, job.id));
+        this.logger.warn(
+          `Disabled job ${job.name} (${job.id}) due to ${consecutiveFailures} consecutive failures.`
+        );
+      }
+
+      if (!isFailureThresholdHit && !isRecovery && !shouldDisable) {
+        return;
+      }
+
+      // 2. Fetch active notification channels for this organization
+      const channels = await db
+        .select()
+        .from(notificationChannels)
+        .where(
+          and(
+            eq(notificationChannels.organizationId, job.organizationId),
+            eq(notificationChannels.enabled, true)
+          )
+        );
+
+      if (channels.length === 0) return;
+
+      // 3. Dispatch to all enabled channels
+      for (const ch of channels) {
+        const targetUrl = ch.config?.target;
+        if (!targetUrl) continue;
+
+        let alertTitle = '';
+        let alertMessage = '';
+        if (shouldDisable) {
+          alertTitle = `⛔ [Samast Cron] Job Disabled: ${job.name}`;
+          alertMessage = `Job has been automatically disabled after ${consecutiveFailures} consecutive failures.\nLast error: ${run.errorMessage || 'HTTP failure'}\nTarget URL: ${job.url}`;
+        } else if (isRecovery) {
+          alertTitle = `✅ [Samast Cron] Recovered: ${job.name}`;
+          alertMessage = `Job has recovered and is now succeeding with HTTP ${run.httpStatus} in ${run.durationMs}ms.\nTarget URL: ${job.url}`;
+        } else {
+          alertTitle = `🚨 [Samast Cron Alert] Job Failed: ${job.name}`;
+          alertMessage = `Execution failed with ${run.status} (${run.httpStatus || 'Timeout'}). Consecutive failures: ${consecutiveFailures}.\nTarget URL: ${job.url}\nError: ${run.errorMessage || 'Unknown error'}`;
+        }
+
+        const chType = (ch.type || '').toLowerCase();
+
+        try {
+          if (chType === 'slack') {
+            await fetch(targetUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                text: `${alertTitle}\n${alertMessage}`,
+              }),
+            });
+          } else if (chType === 'discord') {
+            await fetch(targetUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                content: `**${alertTitle}**\n${alertMessage}`,
+              }),
+            });
+          } else {
+            // Webhook / Email endpoint
+            await fetch(targetUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                event: shouldDisable
+                  ? 'cronjob.disabled'
+                  : isRecovery
+                  ? 'cronjob.recovered'
+                  : 'cronjob.failed',
+                timestamp: new Date().toISOString(),
+                job: { id: job.id, name: job.name, url: job.url, schedule: job.schedule },
+                run: {
+                  status: run.status,
+                  httpStatus: run.httpStatus,
+                  durationMs: run.durationMs,
+                  errorMessage: run.errorMessage,
+                  consecutiveFailures,
+                },
+              }),
+            });
+          }
+          this.logger.log(`Dispatched alert to channel ${ch.name} (${ch.type}) for job ${job.id}`);
+        } catch (err: any) {
+          this.logger.warn(`Failed to dispatch alert to ${ch.name}: ${err.message}`);
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Error in evaluateAlertsAndNotify for job ${job.id}: ${err.message}`);
+    }
+  }
 }
+

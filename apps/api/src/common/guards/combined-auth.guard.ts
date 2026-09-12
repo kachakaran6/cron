@@ -31,6 +31,12 @@ export class CombinedAuthGuard implements CanActivate {
         .limit(1);
 
       if (keyRecord) {
+        // Asynchronously update lastUsedAt
+        db.update(apiKeys)
+          .set({ lastUsedAt: new Date() })
+          .where(eq(apiKeys.id, keyRecord.id))
+          .catch(() => {});
+
         req.organizationId = keyRecord.organizationId;
         req.userId = keyRecord.createdById;
         req.authType = 'API_KEY';
