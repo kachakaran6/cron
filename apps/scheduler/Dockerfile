@@ -21,11 +21,7 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 scheduser
+COPY --from=builder --chown=scheduser:nodejs /app /app
 USER scheduser
 
-COPY --from=builder --chown=scheduser:nodejs /app/packages ./packages
-COPY --from=builder --chown=scheduser:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=scheduser:nodejs /app/apps/scheduler/dist ./dist
-COPY --from=builder --chown=scheduser:nodejs /app/apps/scheduler/package.json ./package.json
-
-CMD ["node", "dist/main.js"]
+CMD ["node", "apps/scheduler/dist/main.js"]
