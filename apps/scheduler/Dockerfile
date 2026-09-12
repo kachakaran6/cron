@@ -23,8 +23,9 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 scheduser
 USER scheduser
 
-COPY --from=builder --chown=scheduser:nodejs /app/apps/scheduler/dist ./dist
+COPY --from=builder --chown=scheduser:nodejs /app/packages ./packages
 COPY --from=builder --chown=scheduser:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=scheduser:nodejs /app/apps/scheduler/dist ./dist
 COPY --from=builder --chown=scheduser:nodejs /app/apps/scheduler/package.json ./package.json
 
 CMD ["node", "dist/main.js"]
