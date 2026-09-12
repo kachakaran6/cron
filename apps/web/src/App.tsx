@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import LandingPage from './pages/LandingPage';
 import DashboardLayout from './components/layouts/DashboardLayout';
 import JobsListPage from './pages/JobsListPage';
 import JobDetailPage from './pages/JobDetailPage';
@@ -22,9 +23,10 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard/jobs" replace />} />
+          <Route path="/" element={<LandingPage />} />
           
           <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<JobsListPage />} />
             <Route path="jobs" element={<JobsListPage />} />
             <Route path="jobs/new" element={<CreateJobPage />} />
             <Route path="jobs/:id" element={<JobDetailPage />} />

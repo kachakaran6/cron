@@ -18,11 +18,11 @@ ARG SCOPE=api
 RUN pnpm turbo build --filter=@cron-saas/${SCOPE}
 
 FROM node:22-alpine AS runner
-WORKDIR /app
+WORKDIR /app/apps/api
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
 COPY --from=builder --chown=nestjs:nodejs /app /app
 USER nestjs
 
 EXPOSE 4000
-CMD ["node", "apps/api/dist/main.js"]
+CMD ["node", "dist/main.js"]

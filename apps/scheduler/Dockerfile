@@ -18,10 +18,10 @@ ARG SCOPE=scheduler
 RUN pnpm turbo build --filter=@cron-saas/${SCOPE}
 
 FROM node:22-alpine AS runner
-WORKDIR /app
+WORKDIR /app/apps/scheduler
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 scheduser
 COPY --from=builder --chown=scheduser:nodejs /app /app
 USER scheduser
 
-CMD ["node", "apps/scheduler/dist/main.js"]
+CMD ["node", "dist/main.js"]
