@@ -221,7 +221,12 @@ export class CronJobsService implements OnModuleInit {
       throw new NotFoundException('Cron job not found');
     }
 
+    // 1. Delete associated execution runs first to avoid Foreign Key constraint violation
+    await db.delete(cronJobRuns).where(eq(cronJobRuns.cronJobId, id));
+
+    // 2. Delete the cron job
     await db.delete(cronJobs).where(eq(cronJobs.id, id));
+
     this.logger.log(`Deleted cron job ${existing.name} (${id})`);
     return { success: true, message: `Cronjob ${existing.name} deleted successfully` };
   }
