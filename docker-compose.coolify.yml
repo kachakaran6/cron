@@ -4,7 +4,6 @@ services:
   # 1. PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: cron_postgres
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-cron_user}
@@ -13,24 +12,18 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U cron_user -d cron_saas']
-      interval: 5s
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-cron_user} -d ${POSTGRES_DB:-cron_saas}']
+      interval: 10s
       timeout: 5s
       retries: 5
 
   # 2. Redis Queue & Lock Manager
   redis:
     image: redis:7-alpine
-    container_name: cron_redis
     restart: always
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_pass_2026}
     volumes:
       - redis_data:/data
-    healthcheck:
-      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-redis_secure_pass_2026}', 'ping']
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   # 3. NestJS REST & OpenAPI API Server
   api:
@@ -39,13 +32,10 @@ services:
       dockerfile: apps/api/Dockerfile
       args:
         SCOPE: api
-    container_name: cron_api
     restart: always
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     environment:
       PORT: 4000
       NODE_ENV: production
@@ -53,10 +43,10 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
-      FRONTEND_URL: ${FRONTEND_URL:-https://cron-web.kachakaran.tech}
+      FRONTEND_URL: ${FRONTEND_URL:-http://b9isp2rfba3f3nrouxuqvqsr.137.23.49.73.sslip.io}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-b5e8f498c39d8461719c8fba5a4c9c1b72e90c8831ef09c0d123456789abcdef}
-    ports:
-      - '4000:4000'
+    expose:
+      - '4000'
 
   # 4. Distributed Scheduler Microservice
   scheduler:
@@ -65,13 +55,10 @@ services:
       dockerfile: apps/scheduler/Dockerfile
       args:
         SCOPE: scheduler
-    container_name: cron_scheduler
     restart: always
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-cron_user}:${POSTGRES_PASSWORD:-cron_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-cron_saas}
       REDIS_HOST: redis
@@ -85,13 +72,10 @@ services:
       dockerfile: apps/worker/Dockerfile
       args:
         SCOPE: worker
-    container_name: cron_worker
     restart: always
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-cron_user}:${POSTGRES_PASSWORD:-cron_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-cron_saas}
       REDIS_HOST: redis
@@ -104,13 +88,15 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    container_name: cron_web
     restart: always
     depends_on:
       - api
     ports:
-      - '8080:80'
+      - '80'
+    expose:
+      - '80'
 
 volumes:
   postgres_data:
   redis_data:
+
