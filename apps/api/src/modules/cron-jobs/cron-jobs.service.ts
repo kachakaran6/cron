@@ -4,6 +4,7 @@ import { eq, desc, and, lte } from 'drizzle-orm';
 import * as cronParser from 'cron-parser';
 import { Queue } from 'bullmq';
 import { CreateCronJobDto } from './dto/create-cron-job.dto';
+import { UpdateCronJobDto } from './dto/update-cron-job.dto';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 
 @Injectable()
@@ -66,7 +67,7 @@ export class CronJobsService implements OnModuleInit {
     }, 10000);
   }
 
-  private calculateNextRun(schedule: string, timezone = 'UTC'): Date {
+  calculateNextRun(schedule: string, timezone = 'UTC'): Date {
     try {
       const parseFn =
         (cronParser as any).parseExpression ||
@@ -132,12 +133,91 @@ export class CronJobsService implements OnModuleInit {
         headers: dto.headers || {},
         body: dto.body,
         timeoutMs: dto.timeoutMs || 10000,
+        enabled: dto.enabled !== undefined ? dto.enabled : true,
         nextRunAt,
+
+        // Benchmark advanced fields
+        saveResponses: dto.saveResponses !== undefined ? dto.saveResponses : true,
+        redirectSuccess: dto.redirectSuccess !== undefined ? dto.redirectSuccess : true,
+        authUsername: dto.authUsername || null,
+        authPassword: dto.authPassword || null,
+
+        // Notification rules
+        notifyOnFailure: dto.notifyOnFailure !== undefined ? dto.notifyOnFailure : true,
+        failureThreshold: dto.failureThreshold !== undefined ? dto.failureThreshold : 1,
+        notifyOnRecovery: dto.notifyOnRecovery !== undefined ? dto.notifyOnRecovery : true,
+        notifyOnDisable: dto.notifyOnDisable !== undefined ? dto.notifyOnDisable : true,
+        notifyTlsExpiry: dto.notifyTlsExpiry !== undefined ? dto.notifyTlsExpiry : false,
+        tlsExpiryDays: dto.tlsExpiryDays !== undefined ? dto.tlsExpiryDays : 30,
       })
       .returning();
 
     this.logger.log(`Created cron job ${job.name} (${job.id}) scheduled for ${nextRunAt.toISOString()}`);
     return job;
+  }
+
+  async updateJob(id: string, organizationId: string, dto: UpdateCronJobDto) {
+    const [existing] = await db
+      .select()
+      .from(cronJobs)
+      .where(and(eq(cronJobs.id, id), eq(cronJobs.organizationId, organizationId)))
+      .limit(1);
+
+    if (!existing) {
+      throw new NotFoundException('Cron job not found or you do not have permission to modify it');
+    }
+
+    // Recompute nextRunAt if schedule or timezone updated
+    let nextRunAt = existing.nextRunAt;
+    if (dto.schedule || dto.timezone) {
+      nextRunAt = this.calculateNextRun(dto.schedule || existing.schedule, dto.timezone || existing.timezone);
+    }
+
+    const [updated] = await db
+      .update(cronJobs)
+      .set({
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.url !== undefined ? { url: dto.url } : {}),
+        ...(dto.method !== undefined ? { method: dto.method } : {}),
+        ...(dto.schedule !== undefined ? { schedule: dto.schedule, nextRunAt } : {}),
+        ...(dto.timezone !== undefined ? { timezone: dto.timezone, nextRunAt } : {}),
+        ...(dto.headers !== undefined ? { headers: dto.headers } : {}),
+        ...(dto.body !== undefined ? { body: dto.body } : {}),
+        ...(dto.timeoutMs !== undefined ? { timeoutMs: dto.timeoutMs } : {}),
+        ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {}),
+        ...(dto.saveResponses !== undefined ? { saveResponses: dto.saveResponses } : {}),
+        ...(dto.redirectSuccess !== undefined ? { redirectSuccess: dto.redirectSuccess } : {}),
+        ...(dto.authUsername !== undefined ? { authUsername: dto.authUsername || null } : {}),
+        ...(dto.authPassword !== undefined ? { authPassword: dto.authPassword || null } : {}),
+        ...(dto.notifyOnFailure !== undefined ? { notifyOnFailure: dto.notifyOnFailure } : {}),
+        ...(dto.failureThreshold !== undefined ? { failureThreshold: dto.failureThreshold } : {}),
+        ...(dto.notifyOnRecovery !== undefined ? { notifyOnRecovery: dto.notifyOnRecovery } : {}),
+        ...(dto.notifyOnDisable !== undefined ? { notifyOnDisable: dto.notifyOnDisable } : {}),
+        ...(dto.notifyTlsExpiry !== undefined ? { notifyTlsExpiry: dto.notifyTlsExpiry } : {}),
+        ...(dto.tlsExpiryDays !== undefined ? { tlsExpiryDays: dto.tlsExpiryDays } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(cronJobs.id, id))
+      .returning();
+
+    this.logger.log(`Updated cron job ${updated.name} (${updated.id})`);
+    return updated;
+  }
+
+  async deleteJob(id: string, organizationId: string) {
+    const [existing] = await db
+      .select()
+      .from(cronJobs)
+      .where(and(eq(cronJobs.id, id), eq(cronJobs.organizationId, organizationId)))
+      .limit(1);
+
+    if (!existing) {
+      throw new NotFoundException('Cron job not found or you do not have permission to delete it');
+    }
+
+    await db.delete(cronJobs).where(eq(cronJobs.id, id));
+    this.logger.log(`Deleted cron job ${existing.name} (${id})`);
+    return { success: true, message: `Cronjob ${existing.name} deleted successfully` };
   }
 
   async listJobs(organizationId: string) {
@@ -225,20 +305,41 @@ export class CronJobsService implements OnModuleInit {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), job.timeoutMs || 10000);
 
+        // Build headers, including HTTP Basic Auth if defined
+        const headers: Record<string, string> = {
+          'User-Agent': 'SamastCron-Worker/1.0 (+https://cron.samast.pro)',
+          ...((job.headers as Record<string, string>) || {}),
+        };
+
+        if (job.authUsername && job.authPassword && !headers['Authorization'] && !headers['authorization']) {
+          const authCreds = Buffer.from(`${job.authUsername}:${job.authPassword}`).toString('base64');
+          headers['Authorization'] = `Basic ${authCreds}`;
+        }
+
         const res = await fetch(job.url, {
           method: job.method || 'GET',
-          headers: {
-            'User-Agent': 'SamastCron-Worker/1.0 (+https://cron.samast.pro)',
-            ...((job.headers as Record<string, string>) || {}),
-          },
+          headers,
           body: job.method !== 'GET' && job.body ? job.body : undefined,
           signal: controller.signal,
+          redirect: 'follow',
         });
         clearTimeout(timeout);
 
         httpStatus = res.status;
-        responseBody = (await res.text()).slice(0, 10000);
-        status = res.status >= 200 && res.status < 300 ? 'SUCCESS' : 'FAILED';
+        const rawBody = await res.text();
+        
+        // Save responses option check
+        if (job.saveResponses !== false) {
+          responseBody = rawBody.slice(0, 10000);
+        } else {
+          responseBody = '[Response body not saved per job configuration]';
+        }
+
+        // Determine success status: 2xx is always success; 3xx is success if redirectSuccess is true
+        const is2xx = res.status >= 200 && res.status < 300;
+        const is3xxRedirect = (job.redirectSuccess !== false) && res.status >= 300 && res.status < 400;
+
+        status = (is2xx || is3xxRedirect) ? 'SUCCESS' : 'FAILED';
         if (status === 'FAILED') {
           errorMessage = `HTTP ${res.status} ${res.statusText}`;
         }

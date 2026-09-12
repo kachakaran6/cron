@@ -22,6 +22,21 @@ export const cronJobs = pgTable('cron_jobs', {
   enabled: boolean('enabled').default(true).notNull(),
   nextRunAt: timestamp('next_run_at', { withTimezone: true, mode: 'date' }).notNull(),
   lastRunAt: timestamp('last_run_at', { withTimezone: true, mode: 'date' }),
+  
+  // Advanced options from benchmark (cron-job.org)
+  saveResponses: boolean('save_responses').default(true).notNull(),
+  redirectSuccess: boolean('redirect_success').default(true).notNull(),
+  authUsername: varchar('auth_username', { length: 255 }),
+  authPassword: varchar('auth_password', { length: 255 }),
+  
+  // Notification & alerting rules
+  notifyOnFailure: boolean('notify_on_failure').default(true).notNull(),
+  failureThreshold: integer('failure_threshold').default(1).notNull(),
+  notifyOnRecovery: boolean('notify_on_recovery').default(true).notNull(),
+  notifyOnDisable: boolean('notify_on_disable').default(true).notNull(),
+  notifyTlsExpiry: boolean('notify_tls_expiry').default(false).notNull(),
+  tlsExpiryDays: integer('tls_expiry_days').default(30).notNull(),
+
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => {

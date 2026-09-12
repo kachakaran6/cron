@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Play, Trash2, Plus, CheckCircle2, Shield, Bell, Clock, Globe, Settings2, Sliders } from 'lucide-react';
-import { createJob } from '../../services/api';
+import { fetchJobById, updateJob, deleteJob } from '../../services/api';
 import { CodeBlock } from '../../components/ui/CodeBlock';
 
 const PRESET_SCHEDULES = [
@@ -29,9 +29,16 @@ const TIMEZONES = [
   'Australia/Sydney',
 ];
 
-export default function CreateSchedulePage() {
+export default function EditSchedulePage() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const { data: job, isLoading } = useQuery({
+    queryKey: ['schedule-detail', id],
+    queryFn: () => fetchJobById(id!),
+    enabled: !!id,
+  });
 
   // Basic Information
   const [name, setName] = useState('');
@@ -70,14 +77,59 @@ export default function CreateSchedulePage() {
   const [testResult, setTestResult] = useState<any>(null);
   const [isTesting, setIsTesting] = useState(false);
 
-  const mutation = useMutation({
-    mutationFn: createJob,
+  // Populate existing job data when loaded
+  useEffect(() => {
+    if (job) {
+      setName(job.name || '');
+      setUrl(job.url || 'https://');
+      setEnabled(job.enabled !== undefined ? job.enabled : true);
+      setSaveResponses(job.saveResponses !== undefined ? job.saveResponses : true);
+
+      if (job.authUsername || job.authPassword) {
+        setUseAuth(true);
+        setAuthUsername(job.authUsername || '');
+        setAuthPassword(job.authPassword || '');
+      }
+
+      if (job.headers && typeof job.headers === 'object') {
+        const parsed = Object.entries(job.headers).map(([k, v]) => ({ key: k, value: String(v) }));
+        setHeadersList(parsed);
+      }
+
+      setMethod(job.method || 'GET');
+      setTimezone(job.timezone || 'UTC');
+      setBody(job.body || '');
+      setTimeoutSec(Math.round((job.timeoutMs || 10000) / 1000));
+      setRedirectSuccess(job.redirectSuccess !== undefined ? job.redirectSuccess : true);
+
+      setSchedule(job.schedule || '*/5 * * * *');
+
+      setNotifyOnFailure(job.notifyOnFailure !== undefined ? job.notifyOnFailure : true);
+      setFailureThreshold(job.failureThreshold || 1);
+      setNotifyOnRecovery(job.notifyOnRecovery !== undefined ? job.notifyOnRecovery : true);
+      setNotifyOnDisable(job.notifyOnDisable !== undefined ? job.notifyOnDisable : true);
+      setNotifyTlsExpiry(job.notifyTlsExpiry !== undefined ? job.notifyTlsExpiry : false);
+      setTlsExpiryDays(job.tlsExpiryDays || 30);
+    }
+  }, [job]);
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: any) => updateJob(id!, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedule-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['cron-schedules'] });
+      navigate(`/dashboard/schedules/${id}`);
+    },
+    onError: (err: any) => {
+      setErrorMessage(err.message || 'Failed to update cronjob');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteJob(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cron-schedules'] });
       navigate('/dashboard/schedules');
-    },
-    onError: (err: any) => {
-      setErrorMessage(err.message || 'Failed to save schedule');
     },
   });
 
@@ -103,7 +155,7 @@ export default function CreateSchedulePage() {
       setTestResult({
         status: 200,
         statusText: 'OK',
-        durationMs: 18,
+        durationMs: 24,
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ status: 'ok', testedAt: new Date().toISOString(), url }, null, 2),
       });
@@ -122,17 +174,18 @@ export default function CreateSchedulePage() {
 
     const trimmedUrl = url.trim();
     if (!trimmedUrl || trimmedUrl === 'https://' || trimmedUrl === 'http://') {
-      setErrorMessage('Please enter a valid destination URL (e.g., https://api.example.com/webhook)');
+      setErrorMessage('Please enter a valid destination URL');
       return;
     }
 
     try {
       new URL(trimmedUrl);
     } catch {
-      setErrorMessage('Invalid URL format. Please provide a full URL with https:// or http://');
+      setErrorMessage('Invalid URL format. Please provide full URL starting with https:// or http://');
       return;
     }
 
+    // Convert headers array to object
     const headersObj: Record<string, string> = {};
     headersList.forEach((h) => {
       if (h.key.trim()) {
@@ -140,20 +193,20 @@ export default function CreateSchedulePage() {
       }
     });
 
-    mutation.mutate({
+    updateMutation.mutate({
       name: trimmedName,
       url: trimmedUrl,
       method,
       schedule,
       timezone,
       headers: headersObj,
-      body: ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && body.trim() ? body : undefined,
+      body: ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && body.trim() ? body : null,
       timeoutMs: (timeoutSec || 10) * 1000,
       enabled,
       saveResponses,
       redirectSuccess,
-      authUsername: useAuth && authUsername.trim() ? authUsername.trim() : undefined,
-      authPassword: useAuth && authPassword.trim() ? authPassword.trim() : undefined,
+      authUsername: useAuth && authUsername.trim() ? authUsername.trim() : null,
+      authPassword: useAuth && authPassword.trim() ? authPassword.trim() : null,
       notifyOnFailure,
       failureThreshold,
       notifyOnRecovery,
@@ -183,26 +236,52 @@ export default function CreateSchedulePage() {
     return times;
   };
 
+  if (isLoading) {
+    return <div className="py-12 text-center text-xs text-zinc-500 font-mono">Loading cronjob data...</div>;
+  }
+
   return (
     <div className="w-full space-y-6">
       {/* Breadcrumbs & Title */}
-      <div className="flex items-center gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
-        <Link
-          to="/dashboard/schedules"
-          className="p-1.5 rounded-md border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors shadow-xs"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-        </Link>
-        <div>
-          <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-            <Link to="/dashboard/schedules" className="hover:underline">
-              Cronjobs
-            </Link>
-            <span>/</span>
-            <span className="text-zinc-700 dark:text-zinc-300 font-medium">Create cronjob</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center gap-3">
+          <Link
+            to={`/dashboard/schedules/${id}`}
+            className="p-1.5 rounded-md border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors shadow-xs"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </Link>
+          <div>
+            <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+              <Link to="/dashboard/schedules" className="hover:underline">
+                Cronjobs
+              </Link>
+              <span>/</span>
+              <Link to={`/dashboard/schedules/${id}`} className="hover:underline">
+                {name || 'Job'}
+              </Link>
+              <span>/</span>
+              <span className="text-zinc-700 dark:text-zinc-300 font-medium">Edit cronjob</span>
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mt-0.5">
+              Edit cronjob: {name || 'n8n'}
+            </h1>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mt-0.5">Create cronjob</h1>
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+              deleteMutation.mutate();
+            }
+          }}
+          disabled={deleteMutation.isPending}
+          className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-semibold transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          <span>{deleteMutation.isPending ? 'Deleting...' : 'Delete cronjob'}</span>
+        </button>
       </div>
 
       {errorMessage && (
@@ -609,13 +688,21 @@ export default function CreateSchedulePage() {
             <span>{isTesting ? 'Testing request...' : 'Test request'}</span>
           </button>
 
-          <button
-            type="submit"
-            disabled={mutation.isPending}
-            className="flex items-center justify-center px-5 py-2.5 sm:py-2 btn-accent font-semibold text-xs rounded-md shadow-sm transition-all disabled:opacity-50 w-full sm:w-auto text-center"
-          >
-            {mutation.isPending ? 'Saving & Scheduling...' : 'Create and activate'}
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Link
+              to={`/dashboard/schedules/${id}`}
+              className="flex-1 sm:flex-initial px-4 py-2 text-center text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-md border border-zinc-300 dark:border-zinc-800"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={updateMutation.isPending}
+              className="flex-1 sm:flex-initial flex items-center justify-center px-5 py-2.5 sm:py-2 btn-accent font-semibold text-xs rounded-md shadow-sm transition-all disabled:opacity-50 text-center"
+            >
+              {updateMutation.isPending ? 'Saving changes...' : 'Save changes'}
+            </button>
+          </div>
         </div>
 
         {/* Test Result Inspector */}

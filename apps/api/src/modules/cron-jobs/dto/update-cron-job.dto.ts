@@ -1,24 +1,28 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsUrl, IsIn, IsOptional, IsInt, IsBoolean, Min, Max } from 'class-validator';
 
-export class CreateCronJobDto {
-  @ApiProperty({ example: 'Production Database Backup', description: 'Human readable job title' })
+export class UpdateCronJobDto {
+  @ApiPropertyOptional({ example: 'Production Database Backup', description: 'Human readable job title' })
+  @IsOptional()
   @IsString()
-  name!: string;
+  name?: string;
 
-  @ApiProperty({ example: 'https://api.example.com/tasks/backup', description: 'Target URL to call' })
+  @ApiPropertyOptional({ example: 'https://api.example.com/tasks/backup', description: 'Target URL to call' })
+  @IsOptional()
   @IsUrl({ require_tld: false })
-  url!: string;
+  url?: string;
 
-  @ApiProperty({ enum: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'], default: 'GET' })
+  @ApiPropertyOptional({ enum: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] })
+  @IsOptional()
   @IsIn(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
-  method!: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
-  @ApiProperty({ example: '*/5 * * * *', description: 'Standard 5-field cron expression' })
+  @ApiPropertyOptional({ example: '*/5 * * * *', description: 'Standard 5-field cron expression' })
+  @IsOptional()
   @IsString()
-  schedule!: string;
+  schedule?: string;
 
-  @ApiPropertyOptional({ example: 'Asia/Kolkata', default: 'UTC' })
+  @ApiPropertyOptional({ example: 'Asia/Kolkata' })
   @IsOptional()
   @IsString()
   timezone?: string;
@@ -39,18 +43,18 @@ export class CreateCronJobDto {
   @Max(60000)
   timeoutMs?: number;
 
-  @ApiPropertyOptional({ default: true, description: 'Whether the job is currently enabled' })
+  @ApiPropertyOptional({ description: 'Whether the job is currently enabled' })
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
 
   // Advanced options from benchmark (cron-job.org)
-  @ApiPropertyOptional({ default: true, description: 'Save responses in job history' })
+  @ApiPropertyOptional({ description: 'Save responses in job history' })
   @IsOptional()
   @IsBoolean()
   saveResponses?: boolean;
 
-  @ApiPropertyOptional({ default: true, description: 'Treat redirects with HTTP 3xx status code as success' })
+  @ApiPropertyOptional({ description: 'Treat redirects with HTTP 3xx status code as success' })
   @IsOptional()
   @IsBoolean()
   redirectSuccess?: boolean;
@@ -66,34 +70,34 @@ export class CreateCronJobDto {
   authPassword?: string;
 
   // Notification & alerting rules
-  @ApiPropertyOptional({ default: true, description: 'Notify when execution fails' })
+  @ApiPropertyOptional({ description: 'Notify when execution fails' })
   @IsOptional()
   @IsBoolean()
   notifyOnFailure?: boolean;
 
-  @ApiPropertyOptional({ default: 1, description: 'Notify after N consecutive failures' })
+  @ApiPropertyOptional({ description: 'Notify after N consecutive failures' })
   @IsOptional()
   @IsInt()
   @Min(1)
   @Max(100)
   failureThreshold?: number;
 
-  @ApiPropertyOptional({ default: true, description: 'Notify when execution succeeds after it failed before' })
+  @ApiPropertyOptional({ description: 'Notify when execution succeeds after it failed before' })
   @IsOptional()
   @IsBoolean()
   notifyOnRecovery?: boolean;
 
-  @ApiPropertyOptional({ default: true, description: 'Notify when cronjob will be disabled because of too many failures' })
+  @ApiPropertyOptional({ description: 'Notify when cronjob will be disabled because of too many failures' })
   @IsOptional()
   @IsBoolean()
   notifyOnDisable?: boolean;
 
-  @ApiPropertyOptional({ default: false, description: 'Notify when server TLS certificate is about to expire' })
+  @ApiPropertyOptional({ description: 'Notify when server TLS certificate is about to expire' })
   @IsOptional()
   @IsBoolean()
   notifyTlsExpiry?: boolean;
 
-  @ApiPropertyOptional({ default: 30, description: 'Days before TLS expiry to notify' })
+  @ApiPropertyOptional({ description: 'Days before TLS expiry to notify' })
   @IsOptional()
   @IsInt()
   @Min(1)

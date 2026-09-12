@@ -4,6 +4,8 @@ import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { EntitlementsModule } from './modules/entitlements/entitlements.module';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { StatusPagesModule } from './modules/status-pages/status-pages.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -12,6 +14,8 @@ import { AuthModule } from './modules/auth/auth.module';
     ApiKeysModule,
     EntitlementsModule,
     HealthModule,
+    StatusPagesModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

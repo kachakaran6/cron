@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Play } from 'lucide-react';
-import { fetchJobById, triggerJobExecution } from '../../services/api';
+import { ArrowLeft, Play, Edit3, Trash2, Shield, Bell, CheckCircle2, Clock, Globe } from 'lucide-react';
+import { fetchJobById, triggerJobExecution, deleteJob } from '../../services/api';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { CodeBlock } from '../../components/ui/CodeBlock';
 
 export default function ScheduleDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'overview' | 'executions' | 'request'>('overview');
   const [selectedExecution, setSelectedExecution] = useState<any>(null);
@@ -27,6 +28,14 @@ export default function ScheduleDetailPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteJob(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cron-schedules'] });
+      navigate('/dashboard/schedules');
+    },
+  });
+
   if (isLoading) {
     return <div className="py-12 text-center text-xs text-zinc-500 font-mono">Loading schedule metadata...</div>;
   }
@@ -36,6 +45,7 @@ export default function ScheduleDetailPage() {
   }
 
   const logs = (job as any).logs || (job as any).executionLogs || [];
+  const headers = (job.headers && typeof job.headers === 'object') ? Object.entries(job.headers) : [];
 
   return (
     <div className="space-y-6">
@@ -49,6 +59,13 @@ export default function ScheduleDetailPage() {
             <ArrowLeft className="w-3.5 h-3.5" />
           </Link>
           <div className="min-w-0">
+            <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">
+              <Link to="/dashboard/schedules" className="hover:underline">
+                Cronjobs
+              </Link>
+              <span>/</span>
+              <span className="text-zinc-700 dark:text-zinc-300 font-medium truncate">{job.name}</span>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 truncate">{job.name}</h1>
               <StatusBadge status={job.enabled ? 'active' : 'paused'} />
@@ -58,6 +75,27 @@ export default function ScheduleDetailPage() {
         </div>
 
         <div className="flex items-center gap-2 self-stretch sm:self-auto">
+          <Link
+            to={`/dashboard/schedules/${job.id}/edit`}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-xs font-medium transition-colors shadow-xs"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-zinc-500" />
+            <span>Edit</span>
+          </Link>
+
+          <button
+            onClick={() => {
+              if (confirm(`Are you sure you want to delete "${job.name}"?`)) {
+                deleteMutation.mutate();
+              }
+            }}
+            disabled={deleteMutation.isPending}
+            className="p-2 rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 transition-colors"
+            title="Delete cronjob"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+
           <button
             onClick={() => triggerMutation.mutate()}
             disabled={triggerMutation.isPending}
@@ -105,20 +143,48 @@ export default function ScheduleDetailPage() {
 
       {/* Tab 1: Overview */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
-            <div className="text-[11px] font-mono uppercase text-zinc-500 dark:text-zinc-400 mb-1 font-semibold">Target Endpoint</div>
-            <div className="font-mono text-xs text-zinc-900 dark:text-zinc-100 break-all">{job.url}</div>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+            <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
+              <div className="text-[11px] font-mono uppercase text-zinc-500 dark:text-zinc-400 mb-1 font-semibold">Target Endpoint</div>
+              <div className="font-mono text-xs text-zinc-900 dark:text-zinc-100 break-all">{job.url}</div>
+            </div>
+
+            <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
+              <div className="text-[11px] font-mono uppercase text-zinc-500 dark:text-zinc-400 mb-1 font-semibold">Schedule &amp; Timezone</div>
+              <div className="font-mono text-xs text-zinc-900 dark:text-zinc-100">{job.schedule} ({job.timezone || 'UTC'})</div>
+            </div>
+
+            <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
+              <div className="text-[11px] font-mono uppercase text-zinc-500 dark:text-zinc-400 mb-1 font-semibold">Next Execution</div>
+              <div className="font-mono text-xs text-zinc-900 dark:text-zinc-100">{new Date(job.nextRunAt).toLocaleString()}</div>
+            </div>
           </div>
 
-          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
-            <div className="text-[11px] font-mono uppercase text-zinc-500 dark:text-zinc-400 mb-1 font-semibold">Schedule &amp; Timezone</div>
-            <div className="font-mono text-xs text-zinc-900 dark:text-zinc-100">{job.schedule} ({job.timezone || 'UTC'})</div>
-          </div>
-
-          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
-            <div className="text-[11px] font-mono uppercase text-zinc-500 dark:text-zinc-400 mb-1 font-semibold">Next Execution</div>
-            <div className="font-mono text-xs text-zinc-900 dark:text-zinc-100">{new Date(job.nextRunAt).toLocaleString()}</div>
+          {/* Alerting Rules Summary */}
+          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-3">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-[var(--accent)]" />
+              <h3 className="text-xs font-mono uppercase text-zinc-700 dark:text-zinc-300 font-semibold">Configured Alert Rules</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <span className={`w-2 h-2 rounded-full ${job.notifyOnFailure !== false ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                <span>Notify on failure (after {job.failureThreshold || 1} failure(s))</span>
+              </div>
+              <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <span className={`w-2 h-2 rounded-full ${job.notifyOnRecovery !== false ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                <span>Notify on recovery after failure</span>
+              </div>
+              <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <span className={`w-2 h-2 rounded-full ${job.notifyOnDisable !== false ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                <span>Notify if disabled due to failures</span>
+              </div>
+              <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <span className={`w-2 h-2 rounded-full ${job.notifyTlsExpiry ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                <span>Notify before TLS expiry ({job.tlsExpiryDays || 30} days)</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -179,10 +245,62 @@ export default function ScheduleDetailPage() {
       {/* Tab 3: Request Config */}
       {activeTab === 'request' && (
         <div className="space-y-4">
-          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-2">
-            <h3 className="text-xs font-mono uppercase text-zinc-500 dark:text-zinc-400 font-semibold">HTTP Method &amp; URL</h3>
-            <div className="font-mono text-xs text-zinc-900 dark:text-zinc-200 font-semibold break-all">{job.method} {job.url}</div>
+          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-3">
+            <h3 className="text-xs font-mono uppercase text-zinc-500 dark:text-zinc-400 font-semibold">HTTP Target</h3>
+            <div className="font-mono text-xs text-zinc-900 dark:text-zinc-200 font-semibold break-all">
+              <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-700 mr-2 uppercase">
+                {job.method}
+              </span>
+              {job.url}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+              <div>
+                <span className="text-zinc-500 block text-[11px]">Timeout</span>
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200">{Math.round((job.timeoutMs || 10000) / 1000)} seconds</span>
+              </div>
+              <div>
+                <span className="text-zinc-500 block text-[11px]">3xx Redirects</span>
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                  {job.redirectSuccess !== false ? 'Treated as success' : 'Followed strictly'}
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500 block text-[11px]">Response History</span>
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                  {job.saveResponses !== false ? 'Saved in history' : 'Omitted'}
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* HTTP Auth */}
+          {job.authUsername && (
+            <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-2">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[var(--accent)]" />
+                <h3 className="text-xs font-mono uppercase text-zinc-700 dark:text-zinc-300 font-semibold">HTTP Authentication</h3>
+              </div>
+              <div className="text-xs font-mono text-zinc-700 dark:text-zinc-300">
+                Username: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{job.authUsername}</span> (Basic Auth active)
+              </div>
+            </div>
+          )}
+
+          {/* Custom Headers */}
+          {headers.length > 0 && (
+            <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-2">
+              <h3 className="text-xs font-mono uppercase text-zinc-500 dark:text-zinc-400 font-semibold">Custom Headers</h3>
+              <div className="space-y-1 font-mono text-xs">
+                {headers.map(([k, v]) => (
+                  <div key={k} className="flex gap-2">
+                    <span className="text-zinc-500 font-semibold">{k}:</span>
+                    <span className="text-zinc-900 dark:text-zinc-200">{String(v)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {job.body && (
             <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-2">

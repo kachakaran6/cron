@@ -89,6 +89,16 @@ async function runStartupMigrations(logger: Logger) {
     await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS last_run_at TIMESTAMPTZ`;
     await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
     await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS save_responses BOOLEAN NOT NULL DEFAULT true`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS redirect_success BOOLEAN NOT NULL DEFAULT true`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS auth_username VARCHAR(255)`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS auth_password VARCHAR(255)`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS notify_on_failure BOOLEAN NOT NULL DEFAULT true`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS failure_threshold INTEGER NOT NULL DEFAULT 1`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS notify_on_recovery BOOLEAN NOT NULL DEFAULT true`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS notify_on_disable BOOLEAN NOT NULL DEFAULT true`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS notify_tls_expiry BOOLEAN NOT NULL DEFAULT false`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS tls_expiry_days INTEGER NOT NULL DEFAULT 30`;
     await client`CREATE INDEX IF NOT EXISTS cron_jobs_org_idx ON cron_jobs (organization_id)`;
     await client`CREATE INDEX IF NOT EXISTS cron_jobs_next_run_idx ON cron_jobs (enabled, next_run_at)`;
 
@@ -175,6 +185,30 @@ async function runStartupMigrations(logger: Logger) {
         updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `;
+
+    // ── 8. status_pages ──────────────────────────────────────────────────────
+    await client`
+      CREATE TABLE IF NOT EXISTS status_pages (
+        id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        organization_id    UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        title              VARCHAR(255) NOT NULL,
+        slug               VARCHAR(128) NOT NULL UNIQUE,
+        is_published       BOOLEAN NOT NULL DEFAULT true,
+        logo_url           TEXT,
+        monitored_job_ids  JSONB NOT NULL DEFAULT '[]',
+        incidents          JSONB NOT NULL DEFAULT '[]',
+        created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await client`ALTER TABLE status_pages ADD COLUMN IF NOT EXISTS title VARCHAR(255)`;
+    await client`ALTER TABLE status_pages ADD COLUMN IF NOT EXISTS slug VARCHAR(128)`;
+    await client`ALTER TABLE status_pages ADD COLUMN IF NOT EXISTS is_published BOOLEAN NOT NULL DEFAULT true`;
+    await client`ALTER TABLE status_pages ADD COLUMN IF NOT EXISTS logo_url TEXT`;
+    await client`ALTER TABLE status_pages ADD COLUMN IF NOT EXISTS monitored_job_ids JSONB NOT NULL DEFAULT '[]'`;
+    await client`ALTER TABLE status_pages ADD COLUMN IF NOT EXISTS incidents JSONB NOT NULL DEFAULT '[]'`;
+    await client`CREATE INDEX IF NOT EXISTS status_pages_org_idx ON status_pages (organization_id)`;
+    await client`CREATE INDEX IF NOT EXISTS status_pages_slug_idx ON status_pages (slug)`;
 
     logger.log('✓ Startup schema bootstrap complete — all tables & columns verified');
   } catch (err: any) {

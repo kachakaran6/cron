@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, RefreshCw, Search, Play, MoreVertical, Clock } from 'lucide-react';
+import { Plus, RefreshCw, Search, Play, MoreVertical, Clock, Edit3 } from 'lucide-react';
 import { fetchJobs, triggerJobExecution } from '../../services/api';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { TableSkeleton } from '../../components/ui/Skeleton';
@@ -155,7 +155,15 @@ export default function SchedulesListPage() {
                         <Play className="w-3.5 h-3.5" />
                       </button>
                       <Link
+                        to={`/dashboard/schedules/${job.id}/edit`}
+                        title="Edit cronjob"
+                        className="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </Link>
+                      <Link
                         to={`/dashboard/schedules/${job.id}`}
+                        title="View details"
                         className="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                       >
                         <MoreVertical className="w-3.5 h-3.5" />

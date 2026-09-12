@@ -12,10 +12,12 @@ import RegisterPage from './pages/RegisterPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import DocsPage from './pages/DocsPage';
+import PublicStatusPage from './pages/PublicStatusPage';
 
 import OverviewPage from './features/schedules/OverviewPage';
 import SchedulesListPage from './features/schedules/SchedulesListPage';
 import CreateSchedulePage from './features/schedules/CreateSchedulePage';
+import EditSchedulePage from './features/schedules/EditSchedulePage';
 import ScheduleDetailPage from './features/schedules/ScheduleDetailPage';
 import ExecutionsListPage from './features/executions/ExecutionsListPage';
 import MonitorsListPage from './features/monitors/MonitorsListPage';
@@ -46,6 +48,7 @@ export default function App() {
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/docs" element={<DocsPage />} />
+              <Route path="/status/:slug" element={<PublicStatusPage />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<AppShell />}>
@@ -53,6 +56,7 @@ export default function App() {
                   <Route path="schedules" element={<SchedulesListPage />} />
                   <Route path="schedules/new" element={<CreateSchedulePage />} />
                   <Route path="schedules/:id" element={<ScheduleDetailPage />} />
+                  <Route path="schedules/:id/edit" element={<EditSchedulePage />} />
                   <Route path="executions" element={<ExecutionsListPage />} />
                   <Route path="monitors" element={<MonitorsListPage />} />
                   <Route path="notifications" element={<NotificationsPage />} />

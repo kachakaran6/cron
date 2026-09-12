@@ -90,18 +90,31 @@ export async function apiGetMe(): Promise<{ user: { id: string; email: string; n
 
 // ── Jobs API ─────────────────────────────────────────────────────────────────
 
-export async function fetchJobs(): Promise<CronJobDTO[]> {
+export async function fetchJobs(): Promise<any[]> {
   return request(`${API_BASE}/jobs`);
 }
 
-export async function fetchJobById(id: string): Promise<CronJobDTO> {
+export async function fetchJobById(id: string): Promise<any> {
   return request(`${API_BASE}/jobs/${id}`);
 }
 
-export async function createJob(data: any): Promise<CronJobDTO> {
+export async function createJob(data: any): Promise<any> {
   return request(`${API_BASE}/jobs`, {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+export async function updateJob(id: string, data: any): Promise<any> {
+  return request(`${API_BASE}/jobs/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteJob(id: string): Promise<{ success: boolean; message: string }> {
+  return request(`${API_BASE}/jobs/${id}`, {
+    method: 'DELETE',
   });
 }
 
@@ -128,4 +141,108 @@ export async function createApiKey(name: string): Promise<{ id: string; name: st
 
 export async function revokeApiKey(id: string): Promise<void> {
   return request(`${API_BASE}/api-keys/${id}`, { method: 'DELETE' });
+}
+
+// ── Status Pages API ─────────────────────────────────────────────────────────
+
+export interface IncidentItem {
+  id: string;
+  title: string;
+  status: 'INVESTIGATING' | 'IDENTIFIED' | 'MONITORING' | 'RESOLVED';
+  startDate: string;
+  endDate?: string;
+  message?: string;
+}
+
+export interface StatusPageDTO {
+  id: string;
+  organizationId: string;
+  title: string;
+  slug: string;
+  isPublished: boolean;
+  logoUrl?: string;
+  monitoredJobIds: string[];
+  incidents: IncidentItem[];
+  monitorCount?: number;
+  activeIncidentsCount?: number;
+  publicUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function fetchStatusPages(): Promise<StatusPageDTO[]> {
+  return request(`${API_BASE}/status-pages`);
+}
+
+export async function fetchStatusPageById(id: string): Promise<any> {
+  return request(`${API_BASE}/status-pages/${id}`);
+}
+
+export async function createStatusPage(data: Partial<StatusPageDTO>): Promise<StatusPageDTO> {
+  return request(`${API_BASE}/status-pages`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateStatusPage(id: string, data: Partial<StatusPageDTO>): Promise<StatusPageDTO> {
+  return request(`${API_BASE}/status-pages/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteStatusPage(id: string): Promise<{ success: boolean }> {
+  return request(`${API_BASE}/status-pages/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function fetchPublicStatusPage(slug: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/public/status/${slug}`);
+  if (!res.ok) {
+    throw new Error('Status page not found');
+  }
+  return res.json();
+}
+
+// ── Notification Channels API ────────────────────────────────────────────────
+
+export interface NotificationChannelDTO {
+  id: string;
+  organizationId: string;
+  name: string;
+  type: 'email' | 'webhook' | 'slack' | 'discord';
+  config: Record<string, any>;
+  enabled: boolean;
+  createdAt: string;
+}
+
+export async function fetchNotificationChannels(): Promise<NotificationChannelDTO[]> {
+  return request(`${API_BASE}/notifications`);
+}
+
+export async function createNotificationChannel(data: {
+  name: string;
+  type: 'email' | 'webhook' | 'slack' | 'discord';
+  config: Record<string, any>;
+  enabled?: boolean;
+}): Promise<NotificationChannelDTO> {
+  return request(`${API_BASE}/notifications`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function toggleNotificationChannel(id: string, enabled: boolean): Promise<NotificationChannelDTO> {
+  return request(`${API_BASE}/notifications/${id}/toggle`, {
+    method: 'PATCH',
+    body: JSON.stringify({ enabled }),
+  });
+}
+
+export async function deleteNotificationChannel(id: string): Promise<{ success: boolean }> {
+  return request(`${API_BASE}/notifications/${id}`, {
+    method: 'DELETE',
+  });
 }

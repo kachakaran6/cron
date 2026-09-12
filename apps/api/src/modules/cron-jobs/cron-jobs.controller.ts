@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiSecurity, ApiQuery } from '@nestjs/swagger';
 import { CombinedAuthGuard } from '../../common/guards/combined-auth.guard';
 import { CronJobsService } from './cron-jobs.service';
 import { CreateCronJobDto } from './dto/create-cron-job.dto';
+import { UpdateCronJobDto } from './dto/update-cron-job.dto';
 
 @ApiTags('Cron Jobs')
 @ApiSecurity('dashboard-jwt')
@@ -29,6 +30,18 @@ export class CronJobsController {
   @ApiOperation({ summary: 'Get details for a specific cron job' })
   async getOne(@Param('id') id: string) {
     return this.cronJobsService.getJobById(id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update an existing cron job' })
+  async update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateCronJobDto) {
+    return this.cronJobsService.updateJob(id, req.organizationId, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a cron job' })
+  async delete(@Req() req: any, @Param('id') id: string) {
+    return this.cronJobsService.deleteJob(id, req.organizationId);
   }
 
   @Get(':id/runs')
