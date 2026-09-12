@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, RefreshCw, Search, Play, MoreVertical, Clock, Edit3 } from 'lucide-react';
-import { fetchJobs, triggerJobExecution } from '../../services/api';
+import { Plus, RefreshCw, Search, Play, MoreVertical, Clock, Edit3, Trash2, Eye, ExternalLink } from 'lucide-react';
+import { fetchJobs, triggerJobExecution, deleteJob } from '../../services/api';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -10,6 +10,13 @@ import { EmptyState } from '../../components/ui/EmptyState';
 export default function SchedulesListPage() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = () => setOpenMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   const { data: jobs, isLoading, isError, refetch } = useQuery({
     queryKey: ['cron-schedules'],
@@ -19,6 +26,13 @@ export default function SchedulesListPage() {
 
   const triggerMutation = useMutation({
     mutationFn: triggerJobExecution,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cron-schedules'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteJob,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cron-schedules'] });
     },
@@ -72,8 +86,8 @@ export default function SchedulesListPage() {
       </div>
 
       {/* Main Data Table */}
-      <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none min-h-[350px]">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="min-w-[720px] w-full text-left text-xs">
             <thead className="bg-zinc-50 dark:bg-zinc-900/80 text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
               <tr>
@@ -144,8 +158,9 @@ export default function SchedulesListPage() {
                     <StatusBadge status={job.enabled ? 'active' : 'paused'} />
                   </td>
 
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right relative">
                     <div className="flex items-center justify-end gap-1">
+                      {/* Direct Run button */}
                       <button
                         onClick={() => triggerMutation.mutate(job.id)}
                         disabled={triggerMutation.isPending}
@@ -154,6 +169,8 @@ export default function SchedulesListPage() {
                       >
                         <Play className="w-3.5 h-3.5" />
                       </button>
+
+                      {/* Direct Edit button */}
                       <Link
                         to={`/dashboard/schedules/${job.id}/edit`}
                         title="Edit cronjob"
@@ -161,13 +178,75 @@ export default function SchedulesListPage() {
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </Link>
-                      <Link
-                        to={`/dashboard/schedules/${job.id}`}
-                        title="View details"
-                        className="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-                      >
-                        <MoreVertical className="w-3.5 h-3.5" />
-                      </Link>
+
+                      {/* Three-dot dropdown menu */}
+                      <div className="relative inline-block text-left">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(openMenuId === job.id ? null : job.id);
+                          }}
+                          title="More options (Edit / Delete / View)"
+                          className={`p-1.5 rounded transition-colors ${
+                            openMenuId === job.id
+                              ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100'
+                              : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                          }`}
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+
+                        {openMenuId === job.id && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute right-0 mt-1.5 w-44 rounded-lg shadow-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 py-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100"
+                          >
+                            <Link
+                              to={`/dashboard/schedules/${job.id}`}
+                              onClick={() => setOpenMenuId(null)}
+                              className="flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-zinc-500" />
+                              <span>View details</span>
+                            </Link>
+
+                            <Link
+                              to={`/dashboard/schedules/${job.id}/edit`}
+                              onClick={() => setOpenMenuId(null)}
+                              className="flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors font-medium"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-zinc-500" />
+                              <span>Edit cronjob</span>
+                            </Link>
+
+                            <button
+                              onClick={() => {
+                                triggerMutation.mutate(job.id);
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-left"
+                            >
+                              <Play className="w-3.5 h-3.5 text-zinc-500" />
+                              <span>Run now</span>
+                            </button>
+
+                            <div className="my-1 border-t border-zinc-200 dark:border-zinc-800" />
+
+                            <button
+                              onClick={() => {
+                                if (confirm(`Are you sure you want to delete cronjob "${job.name}"? This action cannot be undone.`)) {
+                                  deleteMutation.mutate(job.id);
+                                }
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left font-medium"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete cronjob</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
