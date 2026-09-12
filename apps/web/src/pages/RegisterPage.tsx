@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Lock, Mail, User as UserIcon, ArrowRight, Sun, Moon } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, ArrowRight, Sun, Moon, AlertTriangle } from 'lucide-react';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -87,8 +87,9 @@ export default function RegisterPage() {
           theme === 'dark' ? 'bg-zinc-900/60 border-zinc-800' : 'bg-white border-zinc-200'
         }`}>
           {error && (
-            <div className="p-3 rounded border border-rose-800/80 bg-rose-950/40 text-xs text-rose-400">
-              {error}
+            <div className="p-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
