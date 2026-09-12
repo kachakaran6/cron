@@ -30,7 +30,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={`min-h-screen font-sans flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors ${
+    <div className={`min-h-screen font-sans flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 transition-colors ${
       theme === 'dark' ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'
     }`}>
       {/* Theme Switcher in top right */}

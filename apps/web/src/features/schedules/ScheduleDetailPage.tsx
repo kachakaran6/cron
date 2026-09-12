@@ -38,28 +38,28 @@ export default function ScheduleDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-start sm:items-center gap-3">
           <Link
             to="/dashboard/schedules"
-            className="p-1.5 rounded-md border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors shadow-xs"
+            className="p-1.5 rounded-md border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors shadow-xs flex-shrink-0 mt-0.5 sm:mt-0"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
           </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">{job.name}</h1>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 truncate">{job.name}</h1>
               <StatusBadge status={job.enabled ? 'active' : 'paused'} />
             </div>
-            <p className="text-xs font-mono text-zinc-600 dark:text-zinc-400 mt-0.5">{job.url}</p>
+            <p className="text-xs font-mono text-zinc-600 dark:text-zinc-400 mt-0.5 break-all sm:break-normal">{job.url}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-stretch sm:self-auto">
           <button
             onClick={() => triggerMutation.mutate()}
             disabled={triggerMutation.isPending}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-md btn-accent font-semibold text-xs shadow-sm transition-all disabled:opacity-50"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-md btn-accent font-semibold text-xs shadow-sm transition-all disabled:opacity-50"
           >
             <Play className="w-3.5 h-3.5" />
             <span>{triggerMutation.isPending ? 'Executing...' : 'Run now'}</span>
@@ -68,10 +68,10 @@ export default function ScheduleDetailPage() {
       </div>
 
       {/* Tabs Bar */}
-      <div className="flex border-b border-zinc-200 dark:border-zinc-800 text-xs font-medium">
+      <div className="flex border-b border-zinc-200 dark:border-zinc-800 text-xs font-medium overflow-x-auto">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 border-b-2 transition-colors ${
+          className={`px-4 py-2.5 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'overview'
               ? 'border-[var(--accent)] text-[var(--accent)] font-semibold'
               : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
@@ -81,7 +81,7 @@ export default function ScheduleDetailPage() {
         </button>
         <button
           onClick={() => setActiveTab('executions')}
-          className={`px-4 py-2.5 border-b-2 transition-colors ${
+          className={`px-4 py-2.5 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'executions'
               ? 'border-[var(--accent)] text-[var(--accent)] font-semibold'
               : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
@@ -91,7 +91,7 @@ export default function ScheduleDetailPage() {
         </button>
         <button
           onClick={() => setActiveTab('request')}
-          className={`px-4 py-2.5 border-b-2 transition-colors ${
+          className={`px-4 py-2.5 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'request'
               ? 'border-[var(--accent)] text-[var(--accent)] font-semibold'
               : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
@@ -103,18 +103,18 @@ export default function ScheduleDetailPage() {
 
       {/* Tab 1: Overview */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
             <div className="text-[11px] font-mono uppercase text-zinc-500 dark:text-zinc-400 mb-1 font-semibold">Target Endpoint</div>
-            <div className="font-mono text-xs text-zinc-900 dark:text-zinc-100 truncate">{job.url}</div>
+            <div className="font-mono text-xs text-zinc-900 dark:text-zinc-100 break-all">{job.url}</div>
           </div>
 
-          <div className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
+          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
             <div className="text-[11px] font-mono uppercase text-zinc-500 dark:text-zinc-400 mb-1 font-semibold">Schedule &amp; Timezone</div>
             <div className="font-mono text-xs text-zinc-900 dark:text-zinc-100">{job.schedule} ({job.timezone || 'UTC'})</div>
           </div>
 
-          <div className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
+          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
             <div className="text-[11px] font-mono uppercase text-zinc-500 dark:text-zinc-400 mb-1 font-semibold">Next Execution</div>
             <div className="font-mono text-xs text-zinc-900 dark:text-zinc-100">{new Date(job.nextRunAt).toLocaleString()}</div>
           </div>
@@ -124,64 +124,66 @@ export default function ScheduleDetailPage() {
       {/* Tab 2: Executions List */}
       {activeTab === 'executions' && (
         <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none overflow-hidden">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-zinc-50 dark:bg-zinc-900/80 text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
-              <tr>
-                <th className="px-4 py-3">Time</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">HTTP Status</th>
-                <th className="px-4 py-3">Duration</th>
-                <th className="px-4 py-3 text-right">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-mono text-zinc-700 dark:text-zinc-300">
-              {logs.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-[580px] w-full text-left text-xs">
+              <thead className="bg-zinc-50 dark:bg-zinc-900/80 text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-zinc-500 text-xs">
-                    No execution logs recorded yet.
-                  </td>
+                  <th className="px-4 py-3">Time</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">HTTP Status</th>
+                  <th className="px-4 py-3">Duration</th>
+                  <th className="px-4 py-3 text-right">Details</th>
                 </tr>
-              ) : (
-                logs.map((log: any) => (
-                  <tr key={log.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {new Date(log.executedAt).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={log.status === 'SUCCESS' ? 'success' : 'failed'} />
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-200">
-                      {log.statusCode || '—'}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {log.responseTime ? `${log.responseTime}ms` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => setSelectedExecution(log)}
-                        className="text-xs text-[var(--accent)] font-semibold hover:underline"
-                      >
-                        Inspect
-                      </button>
+              </thead>
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-mono text-zinc-700 dark:text-zinc-300">
+                {logs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-zinc-500 text-xs">
+                      No execution logs recorded yet.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  logs.map((log: any) => (
+                    <tr key={log.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
+                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                        {new Date(log.executedAt).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={log.status === 'SUCCESS' ? 'success' : 'failed'} />
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-200">
+                        {log.statusCode || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                        {log.responseTime ? `${log.responseTime}ms` : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => setSelectedExecution(log)}
+                          className="text-xs text-[var(--accent)] font-semibold hover:underline"
+                        >
+                          Inspect
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* Tab 3: Request Config */}
       {activeTab === 'request' && (
         <div className="space-y-4">
-          <div className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-2">
+          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-2">
             <h3 className="text-xs font-mono uppercase text-zinc-500 dark:text-zinc-400 font-semibold">HTTP Method &amp; URL</h3>
-            <div className="font-mono text-xs text-zinc-900 dark:text-zinc-200 font-semibold">{job.method} {job.url}</div>
+            <div className="font-mono text-xs text-zinc-900 dark:text-zinc-200 font-semibold break-all">{job.method} {job.url}</div>
           </div>
 
           {job.body && (
-            <div className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-2">
+            <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-2">
               <h3 className="text-xs font-mono uppercase text-zinc-500 dark:text-zinc-400 font-semibold">Configured Payload</h3>
               <CodeBlock code={job.body} language="json" />
             </div>
@@ -192,7 +194,7 @@ export default function ScheduleDetailPage() {
       {/* Detailed Execution Inspector Drawer */}
       {selectedExecution && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-end z-50">
-          <div className="w-full max-w-xl bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 p-6 space-y-5 overflow-y-auto shadow-2xl">
+          <div className="w-full max-w-xl bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 space-y-5 overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
               <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Execution Technical Inspector</h2>
               <button

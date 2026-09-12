@@ -116,7 +116,7 @@ export default function CreateSchedulePage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-4">
+        <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-4">
           <h2 className="text-xs font-mono uppercase font-semibold text-zinc-500 dark:text-zinc-400">Target Configuration</h2>
 
           <div>
@@ -131,8 +131,8 @@ export default function CreateSchedulePage() {
             />
           </div>
 
-          <div className="grid grid-cols-4 gap-3">
-            <div className="col-span-1">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="sm:col-span-1">
               <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">HTTP Method</label>
               <select
                 value={method}
@@ -147,7 +147,7 @@ export default function CreateSchedulePage() {
               </select>
             </div>
 
-            <div className="col-span-3">
+            <div className="sm:col-span-3">
               <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Target URL</label>
               <input
                 type="url"
@@ -162,7 +162,7 @@ export default function CreateSchedulePage() {
         </div>
 
         {/* Cron Schedule Section */}
-        <div className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-4">
+        <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h2 className="text-xs font-mono uppercase font-semibold text-zinc-500 dark:text-zinc-400">Execution Schedule</h2>
             <div className="flex flex-wrap gap-1.5">
@@ -211,7 +211,7 @@ export default function CreateSchedulePage() {
 
         {/* Optional Payload Section */}
         {method !== 'GET' && (
-          <div className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-4">
+          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-4">
             <h2 className="text-xs font-mono uppercase font-semibold text-zinc-500 dark:text-zinc-400">Request Body (JSON / Text)</h2>
             <textarea
               rows={4}
@@ -224,12 +224,12 @@ export default function CreateSchedulePage() {
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-2">
           <button
             type="button"
             onClick={handleTestRequest}
             disabled={isTesting}
-            className="flex items-center gap-1.5 px-3.5 py-2 border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium rounded-md transition-colors shadow-xs"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium rounded-md transition-colors shadow-xs w-full sm:w-auto"
           >
             <Play className="w-3.5 h-3.5 text-zinc-500" />
             <span>{isTesting ? 'Testing request...' : 'Test request'}</span>
@@ -238,7 +238,7 @@ export default function CreateSchedulePage() {
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="px-5 py-2 btn-accent font-semibold text-xs rounded-md shadow-sm transition-all disabled:opacity-50"
+            className="flex items-center justify-center px-5 py-2.5 sm:py-2 btn-accent font-semibold text-xs rounded-md shadow-sm transition-all disabled:opacity-50 w-full sm:w-auto text-center"
           >
             {mutation.isPending ? 'Saving & Scheduling...' : 'Save and activate'}
           </button>

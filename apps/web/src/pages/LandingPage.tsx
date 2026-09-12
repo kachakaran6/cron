@@ -128,15 +128,16 @@ export default function LandingPage() {
       <main className="flex-1">
         <section className="px-6 pt-24 pb-20 max-w-5xl mx-auto">
           <div className="flex flex-col items-center text-center">
-            {/* Status pill */}
-            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-mono mb-8 ${
+            {/* Release tag */}
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-mono mb-8 ${
               dark ? 'border-zinc-800 bg-zinc-900 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
             }`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-              All systems operational
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200">v1.4</span>
+              <span>·</span>
+              <span>Production HTTP Automation</span>
             </div>
 
-            <h1 className={`text-[2.75rem] sm:text-6xl font-bold tracking-tight leading-tight max-w-3xl mb-6 ${
+            <h1 className={`text-[2.5rem] sm:text-6xl font-bold tracking-tight leading-tight max-w-3xl mb-6 ${
               dark ? 'text-zinc-50' : 'text-zinc-900'
             }`}>
               Scheduled HTTP&nbsp;jobs,{' '}
@@ -148,10 +149,10 @@ export default function LandingPage() {
               inspect every execution, configure headers and timeouts, and receive alerts when jobs fail.
             </p>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto justify-center">
               <Link
                 to={isAuthenticated ? '/dashboard' : '/register'}
-                className="flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded transition-colors btn-accent"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-semibold px-5 py-2.5 rounded transition-colors btn-accent"
               >
                 {isAuthenticated ? 'Open Dashboard' : 'Create free account'}
                 <ArrowRight className="w-4 h-4" />
@@ -160,7 +161,7 @@ export default function LandingPage() {
                 href="/api/docs"
                 target="_blank"
                 rel="noreferrer"
-                className={`flex items-center gap-2 text-sm font-medium px-5 py-2.5 rounded border transition-colors ${
+                className={`w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-medium px-5 py-2.5 rounded border transition-colors ${
                   dark ? 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white hover:border-zinc-700' : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
                 }`}
               >
@@ -269,10 +270,10 @@ export default function LandingPage() {
             <p className={`text-sm mb-8 ${dark ? 'text-zinc-400' : 'text-zinc-500'}`}>
               Free to use. No credit card required.
             </p>
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
               <Link
                 to={isAuthenticated ? '/dashboard' : '/register'}
-                className="flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded transition-colors btn-accent"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-semibold px-5 py-2.5 rounded transition-colors btn-accent"
               >
                 {isAuthenticated ? 'Go to Dashboard' : 'Create account'}
                 <ArrowRight className="w-4 h-4" />
@@ -280,7 +281,7 @@ export default function LandingPage() {
               {!isAuthenticated && (
                 <Link
                   to="/login"
-                  className={`text-sm font-medium px-5 py-2.5 rounded border transition-colors ${dark ? 'border-zinc-800 text-zinc-400 hover:text-zinc-100' : 'border-zinc-200 text-zinc-600 hover:text-zinc-900'}`}
+                  className={`w-full sm:w-auto flex items-center justify-center text-sm font-medium px-5 py-2.5 rounded border transition-colors ${dark ? 'border-zinc-800 text-zinc-400 hover:text-zinc-100' : 'border-zinc-200 text-zinc-600 hover:text-zinc-900'}`}
                 >
                   Sign in
                 </Link>
@@ -292,14 +293,14 @@ export default function LandingPage() {
 
       {/* ── Footer ────────────────────────────────────────────────── */}
       <footer className={`border-t py-8 px-6 text-xs ${dark ? 'border-zinc-800 bg-zinc-950 text-zinc-500' : 'border-zinc-100 bg-zinc-50 text-zinc-400'}`}>
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center gap-2">
             <div className={`w-5 h-5 rounded flex items-center justify-center font-mono font-bold text-[10px] ${dark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-200 text-zinc-700'}`}>
               SC
             </div>
             <span>Samast Cron — Scheduled HTTP Infrastructure</span>
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
             <Link to="/docs" className="hover:text-zinc-300 transition-colors">Documentation</Link>
             <a href="/api/docs" target="_blank" rel="noreferrer" className="hover:text-zinc-300 transition-colors">OpenAPI</a>
             <Link to="/privacy" className="hover:text-zinc-300 transition-colors">Privacy</Link>
