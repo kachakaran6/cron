@@ -1,0 +1,26 @@
+{
+  "name": "@cron-saas/worker",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc-watch --onSuccess \"node dist/main.js\"",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cron-saas/database": "workspace:*",
+    "@cron-saas/shared": "workspace:*",
+    "bullmq": "^5.7.9",
+    "drizzle-orm": "^0.30.10",
+    "ipaddr.js": "^2.2.0",
+    "prom-client": "^15.1.2",
+    "undici": "^6.18.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "tsc-watch": "^6.2.0",
+    "typescript": "^5.4.5"
+  }
+}
