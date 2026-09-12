@@ -8,6 +8,12 @@ export async function fetchJobs(): Promise<CronJobDTO[]> {
   return res.json();
 }
 
+export async function fetchJobById(id: string): Promise<CronJobDTO> {
+  const res = await fetch(`${API_BASE}/jobs/${id}`);
+  if (!res.ok) throw new Error('Failed to fetch job details');
+  return res.json();
+}
+
 export async function createJob(data: any): Promise<CronJobDTO> {
   const res = await fetch(`${API_BASE}/jobs`, {
     method: 'POST',

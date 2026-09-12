@@ -6,9 +6,18 @@ export default {
   ],
   theme: {
     extend: {
+      colors: {
+        zinc: {
+          950: '#09090b',
+          900: '#121215',
+          850: '#18181b',
+          800: '#27272a',
+          700: '#3f3f46',
+        },
+      },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['JetBrains Mono', 'IBM Plex Mono', 'monospace'],
       },
     },
   },
