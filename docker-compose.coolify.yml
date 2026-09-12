@@ -9,14 +9,8 @@ services:
     restart: always
     depends_on:
       - api
-    expose:
+    ports:
       - '80'
-    labels:
-      - 'coolify.managed=true'
-      - 'traefik.enable=true'
-      - 'traefik.http.routers.cron-web.rule=Host(`b9isp2rfba3f3nrouxuqvqsr.137.23.49.73.sslip.io`)'
-      - 'traefik.http.routers.cron-web.entrypoints=http'
-      - 'traefik.http.services.cron-web.loadbalancer.server.port=80'
 
   # 2. NestJS REST & OpenAPI API Server
   api:
@@ -38,8 +32,6 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
       FRONTEND_URL: ${FRONTEND_URL:-http://b9isp2rfba3f3nrouxuqvqsr.137.23.49.73.sslip.io}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-b5e8f498c39d8461719c8fba5a4c9c1b72e90c8831ef09c0d123456789abcdef}
-    expose:
-      - '4000'
 
   # 3. PostgreSQL Database
   postgres:
