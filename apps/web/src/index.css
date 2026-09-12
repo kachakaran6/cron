@@ -5,6 +5,14 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --accent: #7c3aed;       /* violet-600 */
+    --accent-hover: #6d28d9; /* violet-700 */
+    --accent-muted: #4c1d95; /* violet-900 — for backgrounds */
+    --accent-text: #c4b5fd;  /* violet-300 — readable on dark */
+    --accent-border: #5b21b6; /* violet-800 */
+  }
+
   body {
     background-color: #09090b;
     color: #f4f4f5;
@@ -18,7 +26,29 @@
   }
 }
 
-/* Custom Scrollbar for Dense Tables */
+/* ── Accent Utility Classes ─────────────────────────────────── */
+.btn-accent {
+  background-color: var(--accent);
+  color: #fff;
+  transition: background-color 0.15s ease;
+}
+.btn-accent:hover {
+  background-color: var(--accent-hover);
+}
+
+.accent-badge {
+  background-color: rgba(124, 58, 237, 0.15);
+  color: var(--accent-text);
+  border: 1px solid var(--accent-border);
+}
+
+.nav-active-accent {
+  background-color: rgba(124, 58, 237, 0.12);
+  color: var(--accent-text);
+  border-left: 2px solid var(--accent);
+}
+
+/* ── Custom Scrollbar ───────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -34,10 +64,10 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: var(--accent-border);
 }
 
-/* Table Row Focus & Focus Ring Standards */
+/* ── Focus Ring ─────────────────────────────────────────────── */
 .focus-ring {
-  @apply focus:outline-none focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400;
+  @apply focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500;
 }

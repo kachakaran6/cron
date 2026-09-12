@@ -2,10 +2,27 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { client } from '@cron-saas/database';
+
+async function runStartupMigrations(logger: Logger) {
+  try {
+    // Idempotent schema patches — safe to run on every startup
+    await client`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash varchar(255)
+    `;
+    logger.log('Startup migrations applied successfully');
+  } catch (err: any) {
+    // Non-fatal — log and continue (tables may not exist yet on first boot)
+    logger.warn(`Startup migration warning: ${err.message}`);
+  }
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
+
+  // Run idempotent schema patches before accepting traffic
+  await runStartupMigrations(logger);
 
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',

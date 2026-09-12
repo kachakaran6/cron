@@ -87,7 +87,7 @@ export default function LandingPage() {
       }`}>
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className={`w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs ${dark ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-900 text-white'}`}>
+            <div className="w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs bg-violet-600 text-white">
               SC
             </div>
             <span className="font-semibold text-sm tracking-tight">Samast Cron</span>
@@ -116,7 +116,7 @@ export default function LandingPage() {
           )}
           <Link
             to={isAuthenticated ? '/dashboard' : '/register'}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded transition-colors ${dark ? 'bg-zinc-100 text-zinc-950 hover:bg-white' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded transition-colors btn-accent"
           >
             {isAuthenticated ? 'Open Console' : 'Get Started'}
             <ArrowRight className="w-3.5 h-3.5" />
@@ -132,7 +132,7 @@ export default function LandingPage() {
             <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-mono mb-8 ${
               dark ? 'border-zinc-800 bg-zinc-900 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
             }`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
               All systems operational
             </div>
 
@@ -151,7 +151,7 @@ export default function LandingPage() {
             <div className="flex items-center gap-3">
               <Link
                 to={isAuthenticated ? '/dashboard' : '/register'}
-                className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded transition-colors ${dark ? 'bg-zinc-100 text-zinc-950 hover:bg-white' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}
+                className="flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded transition-colors btn-accent"
               >
                 {isAuthenticated ? 'Open Dashboard' : 'Create free account'}
                 <ArrowRight className="w-4 h-4" />
@@ -272,7 +272,7 @@ export default function LandingPage() {
             <div className="flex items-center justify-center gap-3">
               <Link
                 to={isAuthenticated ? '/dashboard' : '/register'}
-                className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded transition-colors ${dark ? 'bg-zinc-100 text-zinc-950 hover:bg-white' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}
+                className="flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded transition-colors btn-accent"
               >
                 {isAuthenticated ? 'Go to Dashboard' : 'Create account'}
                 <ArrowRight className="w-4 h-4" />

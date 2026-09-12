@@ -43,9 +43,7 @@ export default function AppShell() {
       }`}>
         <div className="flex items-center gap-6">
           <Link to="/dashboard" className="flex items-center gap-2.5 group">
-            <div className={`w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs ${
-              theme === 'dark' ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-900 text-zinc-100'
-            }`}>
+            <div className="w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs bg-violet-600 text-white">
               SC
             </div>
             <span className="font-semibold text-sm tracking-tight">
@@ -131,8 +129,8 @@ export default function AppShell() {
                   to={item.to}
                   className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors ${
                     isActive
-                      ? theme === 'dark' ? 'bg-zinc-800 text-zinc-100 font-semibold' : 'bg-zinc-200 text-zinc-900 font-semibold'
-                      : theme === 'dark' ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                    ? 'bg-violet-900/30 text-violet-300 font-semibold border-l-2 border-violet-500 pl-[9px]'
+                    : theme === 'dark' ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
                   }`}
                 >
                   <Icon className="w-4 h-4" />

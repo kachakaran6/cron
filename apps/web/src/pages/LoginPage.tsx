@@ -48,7 +48,7 @@ export default function LoginPage() {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <Link to="/" className="inline-flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center font-mono font-bold text-sm">
+          <div className="w-8 h-8 rounded bg-violet-600 text-white flex items-center justify-center font-mono font-bold text-sm">
             SC
           </div>
           <span className="font-bold text-lg tracking-tight">Samast Cron</span>
@@ -105,7 +105,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2 px-4 rounded bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+              className="w-full py-2 px-4 rounded btn-accent font-semibold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               <span>{isSubmitting ? 'Authenticating...' : 'Sign In'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
