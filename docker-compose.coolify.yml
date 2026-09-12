@@ -13,6 +13,7 @@ services:
     labels:
       - "caddy=http://cron.samast.pro, http://cron.3.110.164.62.sslip.io, http://3.110.164.62"
       - "caddy.reverse_proxy={{upstreams 80}}"
+      - "caddy.networks=coolify"
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1"]
       interval: 10s
