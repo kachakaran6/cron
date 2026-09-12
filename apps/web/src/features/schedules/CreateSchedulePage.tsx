@@ -95,7 +95,7 @@ export default function CreateSchedulePage() {
   };
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex items-center gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
         <Link
           to="/dashboard/schedules"

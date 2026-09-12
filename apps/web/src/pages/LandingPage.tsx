@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, ExternalLink, Clock, Activity, ShieldCheck,
   Globe, Zap, Lock, Sun, Moon, Terminal, Key, AlertTriangle,
+  Play, CheckCircle2, Check
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -26,12 +27,20 @@ const RESPONSE_SNIPPET = `{
   "enabled": true
 }`;
 
-interface StatItemProps { label: string; value: string; }
-function StatItem({ label, value }: StatItemProps) {
+interface StatItemProps { label: string; value: string; dark: boolean; }
+function StatItem({ label, value, dark }: StatItemProps) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-2xl font-bold tracking-tight text-zinc-100">{value}</span>
-      <span className="text-xs text-zinc-500">{label}</span>
+    <div className="flex flex-col gap-1 p-2 sm:p-3 rounded-lg border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-colors">
+      <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight font-mono ${
+        dark ? 'text-zinc-100' : 'text-zinc-900'
+      }`}>
+        {value}
+      </span>
+      <span className={`text-xs font-medium ${
+        dark ? 'text-zinc-400' : 'text-zinc-600'
+      }`}>
+        {label}
+      </span>
     </div>
   );
 }
@@ -58,7 +67,9 @@ function FeatureCard({ icon, title, desc, badge, theme }: FeatureCardProps) {
         </div>
         {badge && (
           <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded ${
-            theme === 'dark' ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            theme === 'dark'
+              ? 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+              : 'bg-zinc-100 text-zinc-600 border border-zinc-200'
           }`}>
             {badge}
           </span>
@@ -66,7 +77,148 @@ function FeatureCard({ icon, title, desc, badge, theme }: FeatureCardProps) {
       </div>
       <div>
         <h3 className={`text-sm font-semibold mb-1 ${theme === 'dark' ? 'text-zinc-100' : 'text-zinc-900'}`}>{title}</h3>
-        <p className="text-xs leading-relaxed text-zinc-500">{desc}</p>
+        <p className={`text-xs leading-relaxed ${theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500'}`}>{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Interactive Cron Engine Animation Visualizer
+ */
+function CronSchedulerVisualizer({ dark }: { dark: boolean }) {
+  const [selectedPreset, setSelectedPreset] = useState('*/5 * * * *');
+  const [progress, setProgress] = useState(45);
+  const [pulseActive, setPulseActive] = useState(false);
+  const [dispatchedCount, setDispatchedCount] = useState(1482);
+  const [timeString, setTimeString] = useState('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setTimeString(now.toTimeString().split(' ')[0] + ' UTC');
+    };
+    updateTime();
+    const clockTimer = setInterval(updateTime, 1000);
+    return () => clearInterval(clockTimer);
+  }, []);
+
+  useEffect(() => {
+    const ticker = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          setPulseActive(true);
+          setDispatchedCount((c) => c + 1);
+          setTimeout(() => setPulseActive(false), 900);
+          return 0;
+        }
+        return prev + 4;
+      });
+    }, 250);
+
+    return () => clearInterval(ticker);
+  }, []);
+
+  return (
+    <div className={`w-full max-w-3xl mx-auto mt-12 rounded-xl border p-4 sm:p-6 shadow-2xl transition-all font-mono text-xs ${
+      dark ? 'border-zinc-800 bg-zinc-950/90' : 'border-zinc-300 bg-white/95'
+    }`}>
+      {/* Visualizer Terminal Top Bar */}
+      <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800 text-[11px]">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+          </div>
+          <span className="font-semibold text-zinc-700 dark:text-zinc-300 ml-2">
+            CRON ENGINE KERNEL: ACTIVE
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 text-zinc-500">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+          <span>{timeString || 'LIVE'}</span>
+        </div>
+      </div>
+
+      {/* Preset Expression Selector */}
+      <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="text-[11px] text-zinc-500">SELECT CRON PATTERN:</div>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { label: 'Every 1m', expr: '* * * * *' },
+            { label: 'Every 5m', expr: '*/5 * * * *' },
+            { label: 'Hourly', expr: '0 * * * *' },
+            { label: 'Nightly', expr: '0 0 * * *' },
+          ].map((p) => (
+            <button
+              key={p.expr}
+              onClick={() => setSelectedPreset(p.expr)}
+              className={`px-2.5 py-1 rounded text-[11px] border transition-colors ${
+                selectedPreset === p.expr
+                  ? 'border-[var(--accent)] bg-[var(--accent-light-bg)] dark:bg-[var(--accent-muted)] text-[var(--accent-light-text)] dark:text-[var(--accent-text)] font-semibold'
+                  : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 text-zinc-600 dark:text-zinc-400'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Live Dispatch Countdown Progress Meter */}
+      <div className="mt-4 space-y-2">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-zinc-600 dark:text-zinc-400">
+            Active Schedule: <span className="font-bold text-zinc-900 dark:text-zinc-100">{selectedPreset}</span>
+          </span>
+          <span className="text-zinc-500">
+            Next Dispatch: <span className="font-bold text-zinc-900 dark:text-zinc-200">{Math.max(0, 100 - progress)}%</span>
+          </span>
+        </div>
+
+        <div className="w-full h-2 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden relative">
+          <div
+            className="h-full rounded-full transition-all duration-200 ease-out"
+            style={{
+              width: `${progress}%`,
+              backgroundColor: 'var(--accent)',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Live Dispatch Event Box */}
+      <div className={`mt-4 p-3.5 rounded-lg border transition-all duration-300 ${
+        pulseActive
+          ? 'border-emerald-500 bg-emerald-500/10 dark:bg-emerald-950/40 shadow-lg'
+          : dark
+          ? 'border-zinc-800 bg-zinc-900/60'
+          : 'border-zinc-200 bg-zinc-50'
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${pulseActive ? 'bg-emerald-500 animate-ping' : 'bg-emerald-500'}`} />
+            <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+              POST https://api.acme.com/webhooks/database-sync
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-bold">
+              HTTP 200 OK
+            </span>
+            <span className="text-zinc-500 font-semibold">14ms latency</span>
+          </div>
+        </div>
+
+        <div className="mt-2 text-[11px] text-zinc-500 flex flex-wrap items-center gap-3">
+          <span>Worker: node-us-east-1</span>
+          <span>•</span>
+          <span>SSRF: Protected</span>
+          <span>•</span>
+          <span>Total Dispatched: <strong className="text-zinc-700 dark:text-zinc-300">{dispatchedCount}</strong></span>
+        </div>
       </div>
     </div>
   );
@@ -75,22 +227,26 @@ function FeatureCard({ icon, title, desc, badge, theme }: FeatureCardProps) {
 export default function LandingPage() {
   const { theme, toggleTheme } = useTheme();
   const { isAuthenticated } = useAuth();
-
   const dark = theme === 'dark';
 
   return (
     <div className={`min-h-screen font-sans flex flex-col transition-colors ${dark ? 'bg-zinc-950 text-zinc-100' : 'bg-white text-zinc-900'}`}>
 
       {/* ── Nav ─────────────────────────────────────────────────── */}
-      <header className={`h-14 border-b px-6 flex items-center justify-between sticky top-0 z-40 ${
+      <header className={`h-14 border-b px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 ${
         dark ? 'border-zinc-800 bg-zinc-950/95 backdrop-blur-sm' : 'border-zinc-200 bg-white/95 backdrop-blur-sm'
       }`}>
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs bg-violet-600 text-white">
+            <div 
+              style={{ backgroundColor: 'var(--accent)' }}
+              className="w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs text-white shadow-sm"
+            >
               SC
             </div>
-            <span className="font-semibold text-sm tracking-tight">Samast Cron</span>
+            <span className="font-semibold text-sm tracking-tight text-zinc-900 dark:text-zinc-100">
+              Samast Cron
+            </span>
           </Link>
           <nav className="hidden md:flex items-center gap-5 text-xs">
             <a href="#features" className={`transition-colors ${dark ? 'text-zinc-400 hover:text-zinc-100' : 'text-zinc-500 hover:text-zinc-900'}`}>Features</a>
@@ -126,15 +282,15 @@ export default function LandingPage() {
 
       {/* ── Hero ─────────────────────────────────────────────────── */}
       <main className="flex-1">
-        <section className="px-6 pt-24 pb-20 max-w-5xl mx-auto">
+        <section className="px-4 sm:px-6 pt-20 sm:pt-24 pb-16 sm:pb-20 max-w-5xl mx-auto">
           <div className="flex flex-col items-center text-center">
             {/* Release tag */}
-            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-mono mb-8 ${
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-mono mb-6 ${
               dark ? 'border-zinc-800 bg-zinc-900 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
             }`}>
-              <span className="font-semibold text-zinc-800 dark:text-zinc-200">v1.4</span>
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200">v1.4.2</span>
               <span>·</span>
-              <span>Production HTTP Automation</span>
+              <span>Production HTTP Scheduling</span>
             </div>
 
             <h1 className={`text-[2.5rem] sm:text-6xl font-bold tracking-tight leading-tight max-w-3xl mb-6 ${
@@ -144,7 +300,7 @@ export default function LandingPage() {
               <span className={dark ? 'text-zinc-400' : 'text-zinc-500'}>done right.</span>
             </h1>
 
-            <p className={`text-sm sm:text-base max-w-2xl leading-relaxed mb-10 ${dark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+            <p className={`text-sm sm:text-base max-w-2xl leading-relaxed mb-8 ${dark ? 'text-zinc-400' : 'text-zinc-600'}`}>
               Samast Cron is a production-grade cron scheduling platform. Define schedules with cron expressions,
               inspect every execution, configure headers and timeouts, and receive alerts when jobs fail.
             </p>
@@ -169,19 +325,22 @@ export default function LandingPage() {
                 View API reference
               </a>
             </div>
+
+            {/* Cron Animation Visualizer */}
+            <CronSchedulerVisualizer dark={dark} />
           </div>
 
-          {/* Stats Row */}
-          <div className={`mt-20 grid grid-cols-2 sm:grid-cols-4 gap-8 pt-10 border-t ${dark ? 'border-zinc-800/60' : 'border-zinc-200'}`}>
-            <StatItem value="500" label="Max cron jobs / account" />
-            <StatItem value="60s" label="Minimum interval" />
-            <StatItem value="30d" label="Execution history" />
-            <StatItem value="99.9%" label="Infrastructure uptime" />
+          {/* Stats Row (High Contrast and Bold in both Light and Dark Mode) */}
+          <div className={`mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 pt-10 border-t ${dark ? 'border-zinc-800/60' : 'border-zinc-200'}`}>
+            <StatItem dark={dark} value="500" label="Max cron jobs / account" />
+            <StatItem dark={dark} value="60s" label="Minimum interval" />
+            <StatItem dark={dark} value="30d" label="Execution history" />
+            <StatItem dark={dark} value="99.9%" label="Infrastructure uptime" />
           </div>
         </section>
 
         {/* ── Features Grid ────────────────────────────────────────── */}
-        <section id="features" className={`py-16 px-6 border-t ${dark ? 'border-zinc-800/60' : 'border-zinc-100'}`}>
+        <section id="features" className={`py-16 px-4 sm:px-6 border-t ${dark ? 'border-zinc-800/60' : 'border-zinc-100'}`}>
           <div className="max-w-5xl mx-auto">
             <div className="mb-10">
               <p className={`text-[11px] font-mono uppercase tracking-widest mb-2 ${dark ? 'text-zinc-500' : 'text-zinc-400'}`}>Platform features</p>
@@ -204,7 +363,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── Code Block ────────────────────────────────────────────── */}
-        <section id="api" className={`py-16 px-6 border-t ${dark ? 'border-zinc-800/60' : 'border-zinc-100'}`}>
+        <section id="api" className={`py-16 px-4 sm:px-6 border-t ${dark ? 'border-zinc-800/60' : 'border-zinc-100'}`}>
           <div className="max-w-5xl mx-auto">
             <div className="mb-10">
               <p className={`text-[11px] font-mono uppercase tracking-widest mb-2 ${dark ? 'text-zinc-500' : 'text-zinc-400'}`}>REST API</p>
@@ -262,7 +421,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── CTA ──────────────────────────────────────────────────── */}
-        <section className={`py-20 px-6 border-t ${dark ? 'border-zinc-800/60' : 'border-zinc-100'}`}>
+        <section className={`py-20 px-4 sm:px-6 border-t ${dark ? 'border-zinc-800/60' : 'border-zinc-100'}`}>
           <div className="max-w-2xl mx-auto text-center">
             <h2 className={`text-2xl font-bold tracking-tight mb-4 ${dark ? 'text-zinc-100' : 'text-zinc-900'}`}>
               Start scheduling in minutes.
@@ -292,10 +451,13 @@ export default function LandingPage() {
       </main>
 
       {/* ── Footer ────────────────────────────────────────────────── */}
-      <footer className={`border-t py-8 px-6 text-xs ${dark ? 'border-zinc-800 bg-zinc-950 text-zinc-500' : 'border-zinc-100 bg-zinc-50 text-zinc-400'}`}>
+      <footer className={`border-t py-8 px-4 sm:px-6 text-xs ${dark ? 'border-zinc-800 bg-zinc-950 text-zinc-500' : 'border-zinc-100 bg-zinc-50 text-zinc-400'}`}>
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center gap-2">
-            <div className={`w-5 h-5 rounded flex items-center justify-center font-mono font-bold text-[10px] ${dark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-200 text-zinc-700'}`}>
+            <div 
+              style={{ backgroundColor: 'var(--accent)' }}
+              className="w-5 h-5 rounded flex items-center justify-center font-mono font-bold text-[10px] text-white"
+            >
               SC
             </div>
             <span>Samast Cron — Scheduled HTTP Infrastructure</span>

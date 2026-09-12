@@ -22,6 +22,8 @@ export default function ScheduleDetailPage() {
     mutationFn: () => triggerJobExecution(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedule-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['cron-schedules'] });
+      setActiveTab('executions');
     },
   });
 

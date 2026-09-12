@@ -43,4 +43,10 @@ export class CronJobsController {
   async executeNow(@Param('id') id: string) {
     return this.cronJobsService.triggerImmediateRun(id);
   }
+
+  @Post(':id/trigger')
+  @ApiOperation({ summary: 'Trigger immediate execution alias' })
+  async triggerNow(@Param('id') id: string) {
+    return this.cronJobsService.triggerImmediateRun(id);
+  }
 }

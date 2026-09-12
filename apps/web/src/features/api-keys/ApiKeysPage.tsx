@@ -45,7 +45,7 @@ export default function ApiKeysPage() {
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="w-full space-y-6">
       <div className="pb-3 border-b border-zinc-200 dark:border-zinc-800">
         <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">API Keys</h1>
         <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
