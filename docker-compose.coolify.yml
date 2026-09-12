@@ -1,26 +1,18 @@
 version: '3.8'
 
 services:
-  # 1. PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
+  # 1. Web Dashboard (React SPA + Nginx Reverse Proxy to API)
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
     restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-cron_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cron_secure_pass_2026}
-      POSTGRES_DB: ${POSTGRES_DB:-cron_saas}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    depends_on:
+      - api
+    ports:
+      - '80:80'
 
-  # 2. Redis Queue & Lock Manager
-  redis:
-    image: redis:7-alpine
-    restart: always
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_pass_2026}
-    volumes:
-      - redis_data:/data
-
-  # 3. NestJS REST & OpenAPI API Server
+  # 2. NestJS REST & OpenAPI API Server
   api:
     build:
       context: .
@@ -43,7 +35,26 @@ services:
     expose:
       - '4000'
 
-  # 4. Distributed Scheduler Microservice
+  # 3. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cron_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cron_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-cron_saas}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 4. Redis Queue & Lock Manager
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_pass_2026}
+    volumes:
+      - redis_data:/data
+
+  # 5. Distributed Scheduler Microservice
   scheduler:
     build:
       context: .
@@ -60,7 +71,7 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
 
-  # 5. Isolated HTTP Execution Worker Pool
+  # 6. Isolated HTTP Execution Worker Pool
   worker:
     build:
       context: .
@@ -78,20 +89,6 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
       WORKER_CONCURRENCY: 50
 
-  # 6. Web Dashboard (React SPA + Nginx)
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    restart: always
-    depends_on:
-      - api
-    ports:
-      - '80'
-    expose:
-      - '80'
-
 volumes:
   postgres_data:
   redis_data:
-
