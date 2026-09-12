@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # Distributed Scheduler Microservice
+  scheduler:
+    build:
+      context: .
+      dockerfile: apps/scheduler/Dockerfile
+      args:
+        SCOPE: scheduler
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cron_user}:${POSTGRES_PASSWORD:-cron_secure_pass_2026}@13.206.16.144:5432/${POSTGRES_DB:-cron_saas}
+      REDIS_HOST: 13.206.16.144
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
+
+  # Isolated HTTP Execution Worker Pool
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+      args:
+        SCOPE: worker
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cron_user}:${POSTGRES_PASSWORD:-cron_secure_pass_2026}@13.206.16.144:5432/${POSTGRES_DB:-cron_saas}
+      REDIS_HOST: 13.206.16.144
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
+      WORKER_CONCURRENCY: 50
