@@ -49,7 +49,7 @@ export default function CreateSchedulePage() {
 
   // Advanced Options
   const [method, setMethod] = useState<'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'>('GET');
-  const [timezone, setTimezone] = useState('UTC');
+  const [timezone, setTimezone] = useState(() => localStorage.getItem('samast_default_timezone') || 'Asia/Kolkata');
   const [body, setBody] = useState('');
   const [timeoutSec, setTimeoutSec] = useState(10);
   const [redirectSuccess, setRedirectSuccess] = useState(true);

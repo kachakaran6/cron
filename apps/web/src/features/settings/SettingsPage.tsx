@@ -1,13 +1,52 @@
-import React from 'react';
-import { Settings, ShieldCheck, Globe, Palette, Check, Sun, Moon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Settings, ShieldCheck, Globe, Palette, Check, Sun, Moon, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useTheme, ACCENT_PALETTES, AccentColor } from '../../context/ThemeContext';
 
+const TIMEZONE_OPTIONS = [
+  { value: 'UTC', label: 'Coordinated Universal Time (UTC +0:00)' },
+  { value: 'Asia/Kolkata', label: 'Asia/Kolkata (IST +5:30)' },
+  { value: 'America/New_York', label: 'America/New_York (EST -5:00)' },
+  { value: 'America/Los_Angeles', label: 'America/Los_Angeles (PST -8:00)' },
+  { value: 'America/Chicago', label: 'America/Chicago (CST -6:00)' },
+  { value: 'Europe/London', label: 'Europe/London (GMT +0:00)' },
+  { value: 'Europe/Berlin', label: 'Europe/Berlin (CET +1:00)' },
+  { value: 'Europe/Paris', label: 'Europe/Paris (CET +1:00)' },
+  { value: 'Asia/Tokyo', label: 'Asia/Tokyo (JST +9:00)' },
+  { value: 'Asia/Singapore', label: 'Asia/Singapore (SGT +8:00)' },
+  { value: 'Asia/Dubai', label: 'Asia/Dubai (GST +4:00)' },
+  { value: 'Australia/Sydney', label: 'Australia/Sydney (AEST +10:00)' },
+];
+
 export default function SettingsPage() {
-  const { theme, setTheme, accent, setAccent, currentPalette } = useTheme();
+  const { theme, setTheme, accent, setAccent } = useTheme();
+
+  const [timezone, setTimezone] = useState(() => {
+    return localStorage.getItem('samast_default_timezone') || 'Asia/Kolkata';
+  });
+  const [isTzOpen, setIsTzOpen] = useState(false);
+  const [tzSavedMsg, setTzSavedMsg] = useState(false);
+  const tzRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (tzRef.current && !tzRef.current.contains(e.target as Node)) {
+        setIsTzOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelectTimezone = (tzValue: string) => {
+    setTimezone(tzValue);
+    localStorage.setItem('samast_default_timezone', tzValue);
+    setIsTzOpen(false);
+    setTzSavedMsg(true);
+    setTimeout(() => setTzSavedMsg(false), 2500);
+  };
 
   const accentEntries = Object.values(ACCENT_PALETTES);
 
-  // Simplified color names as requested: "give only simple color name and color circle simply"
   const getSimpleName = (id: AccentColor) => {
     switch (id) {
       case 'violet': return 'Violet';
@@ -19,6 +58,8 @@ export default function SettingsPage() {
       default: return 'Color';
     }
   };
+
+  const selectedTzObj = TIMEZONE_OPTIONS.find((t) => t.value === timezone) || TIMEZONE_OPTIONS[0];
 
   return (
     <div className="w-full space-y-6">
@@ -43,6 +84,7 @@ export default function SettingsPage() {
           {/* Light / Dark Mode Toggle Pills */}
           <div className="flex items-center p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 text-xs self-start sm:self-auto">
             <button
+              type="button"
               onClick={() => setTheme('light')}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors ${
                 theme === 'light'
@@ -54,6 +96,7 @@ export default function SettingsPage() {
               <span>Light</span>
             </button>
             <button
+              type="button"
               onClick={() => setTheme('dark')}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors ${
                 theme === 'dark'
@@ -71,7 +114,7 @@ export default function SettingsPage() {
           Select your accent brand color. All active tabs, action buttons, status highlights, and focus rings update dynamically.
         </p>
 
-        {/* Clean Simple Accent Color Palette Grid (Circle + Name Only) */}
+        {/* Clean Simple Accent Color Palette Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {accentEntries.map((item) => {
             const isSelected = accent === item.id;
@@ -80,6 +123,7 @@ export default function SettingsPage() {
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => setAccent(item.id)}
                 className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                   isSelected
@@ -101,53 +145,62 @@ export default function SettingsPage() {
             );
           })}
         </div>
-
-        {/* Live Interactive Preview */}
-        <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 space-y-3">
-          <div className="text-[11px] font-mono font-semibold uppercase text-zinc-500 tracking-wider">
-            Live Preview with Current Accent ({currentPalette.name})
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <button className="px-3.5 py-1.5 rounded-md btn-accent font-semibold text-xs shadow-sm">
-              Primary Action
-            </button>
-            <span className="px-2.5 py-1 rounded text-xs font-semibold accent-badge">
-              Active Highlight
-            </span>
-            <div className="flex items-center gap-2 px-3 py-1 rounded text-xs nav-active-accent">
-              <span>Active Navigation Item</span>
-            </div>
-            <input
-              type="text"
-              readOnly
-              value="Interactive Focus Ring"
-              className="px-2.5 py-1 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded text-xs text-zinc-800 dark:text-zinc-200 focus-ring font-mono flex-1 sm:flex-initial min-w-[150px]"
-            />
-          </div>
-        </div>
       </div>
 
-      {/* ── 2. Timezone Configuration ────────────────────────────────────────── */}
+      {/* ── 2. Timezone Configuration (Shadcn UI Custom Dropdown) ────────── */}
       <div className="p-5 sm:p-6 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-4">
-        <h2 className="text-xs font-mono uppercase font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
-          <Globe className="w-4 h-4 text-zinc-500" />
-          <span>Default Schedule Timezone</span>
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-mono uppercase font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
+            <Globe className="w-4 h-4 text-zinc-500" />
+            <span>Default Schedule Timezone</span>
+          </h2>
+
+          {tzSavedMsg && (
+            <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 animate-in fade-in duration-150">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Saved</span>
+            </span>
+          )}
+        </div>
+
         <p className="text-xs text-zinc-600 dark:text-zinc-400">
           New cron jobs will be scheduled with this default timezone unless explicitly overridden during creation.
         </p>
-        <div>
-          <select
-            defaultValue="UTC"
-            className="w-full sm:w-96 px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 font-mono focus-ring shadow-xs"
+
+        <div className="relative w-full sm:w-96" ref={tzRef}>
+          {/* Custom Trigger Button */}
+          <button
+            type="button"
+            onClick={() => setIsTzOpen(!isTzOpen)}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus-ring shadow-xs transition-all font-mono"
           >
-            <option value="UTC">Coordinated Universal Time (UTC)</option>
-            <option value="Asia/Kolkata">Asia/Kolkata (IST +5:30)</option>
-            <option value="America/New_York">America/New_York (EST -5:00)</option>
-            <option value="Europe/London">Europe/London (GMT +0:00)</option>
-            <option value="Asia/Tokyo">Asia/Tokyo (JST +9:00)</option>
-            <option value="Europe/Berlin">Europe/Berlin (CET +1:00)</option>
-          </select>
+            <span className="truncate">{selectedTzObj.label}</span>
+            <ChevronDown className={`w-4 h-4 ml-2 text-zinc-400 transition-transform duration-150 ${isTzOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Popover Dropdown Menu */}
+          {isTzOpen && (
+            <div className="absolute left-0 right-0 mt-1.5 max-h-60 overflow-y-auto rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100 divide-y divide-zinc-100 dark:divide-zinc-800/50">
+              {TIMEZONE_OPTIONS.map((item) => {
+                const isSelected = item.value === timezone;
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => handleSelectTimezone(item.value)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left text-xs font-mono transition-colors ${
+                      isSelected
+                        ? 'bg-zinc-100 dark:bg-zinc-800 text-[var(--accent)] font-semibold'
+                        : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                    }`}
+                  >
+                    <span className="truncate">{item.label}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 ml-2 text-[var(--accent)] flex-shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

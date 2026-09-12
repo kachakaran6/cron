@@ -214,11 +214,11 @@ export class CronJobsService implements OnModuleInit {
     const [existing] = await db
       .select()
       .from(cronJobs)
-      .where(and(eq(cronJobs.id, id), eq(cronJobs.organizationId, organizationId)))
+      .where(eq(cronJobs.id, id))
       .limit(1);
 
     if (!existing) {
-      throw new NotFoundException('Cron job not found or you do not have permission to delete it');
+      throw new NotFoundException('Cron job not found');
     }
 
     await db.delete(cronJobs).where(eq(cronJobs.id, id));

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, Link, useLocation } from 'react-router-dom';
 import { 
   LayoutGrid, 
@@ -25,6 +25,18 @@ export default function AppShell() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const navItems = [
     { label: 'Overview', to: '/dashboard', icon: LayoutGrid, exact: true },
@@ -36,7 +48,6 @@ export default function AppShell() {
     { label: 'Settings', to: '/dashboard/settings', icon: Settings },
   ];
 
-  // Mobile bottom quick navigation
   const mobileQuickItems = [
     { label: 'Overview', to: '/dashboard', icon: LayoutGrid, exact: true },
     { label: 'Schedules', to: '/dashboard/schedules', icon: Clock },
@@ -44,10 +55,12 @@ export default function AppShell() {
     { label: 'Settings', to: '/dashboard/settings', icon: Settings },
   ];
 
+  const userInitial = user?.name ? user.name[0].toUpperCase() : (user?.email ? user.email[0].toUpperCase() : 'A');
+
   return (
-    <div className="min-h-screen flex flex-col font-sans transition-colors bg-slate-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 selection:bg-zinc-300 dark:selection:bg-zinc-800">
+    <div className="h-screen overflow-hidden flex flex-col font-sans transition-colors bg-slate-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 selection:bg-zinc-300 dark:selection:bg-zinc-800">
       {/* Compact Header Bar */}
-      <header className="h-14 border-b px-3 sm:px-6 flex items-center justify-between sticky top-0 z-40 bg-white/95 dark:bg-zinc-950/95 backdrop-blur border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none">
+      <header className="h-14 border-b px-3 sm:px-6 flex items-center justify-between flex-shrink-0 bg-white/95 dark:bg-zinc-950/95 backdrop-blur border-zinc-200 dark:border-zinc-800 shadow-xs z-30">
         <div className="flex items-center gap-3 sm:gap-6">
           {/* Mobile Hamburger Toggle */}
           <button
@@ -75,8 +88,9 @@ export default function AppShell() {
         <div className="flex items-center gap-1.5 sm:gap-3 text-xs">
           {/* Light / Dark Mode Toggle */}
           <button
+            type="button"
             onClick={toggleTheme}
-            className="p-1.5 sm:p-2 rounded border transition-colors border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-sm dark:shadow-none"
+            className="p-1.5 sm:p-2 rounded border transition-colors border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-xs"
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-zinc-700" />}
@@ -84,7 +98,7 @@ export default function AppShell() {
 
           <Link
             to="/docs"
-            className="hidden sm:flex text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors items-center gap-1 py-1 px-2"
+            className="hidden sm:flex text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors items-center gap-1 py-1 px-2 font-medium"
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Docs</span>
@@ -94,24 +108,88 @@ export default function AppShell() {
             href="/api/docs"
             target="_blank"
             rel="noreferrer"
-            className="hidden sm:flex text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors items-center gap-1 py-1 px-2"
+            className="hidden sm:flex text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors items-center gap-1 py-1 px-2 font-medium"
           >
             <span>OpenAPI</span>
             <ExternalLink className="w-3 h-3" />
           </a>
 
-          {/* User Profile & Logout */}
-          <div className="flex items-center gap-2 pl-1.5 sm:pl-2 border-l border-zinc-200 dark:border-zinc-800">
-            <span className="hidden lg:inline text-[11px] font-mono text-zinc-600 dark:text-zinc-400 max-w-[150px] truncate">
-              {user?.email || 'admin@samast.pro'}
-            </span>
+          {/* User Profile Circle Avatar with Popover Dropdown */}
+          <div className="relative pl-1.5 sm:pl-2 border-l border-zinc-200 dark:border-zinc-800" ref={profileRef}>
             <button
-              onClick={logout}
-              className="p-1.5 sm:p-2 rounded border transition-colors border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-zinc-800"
-              title="Sign Out"
+              type="button"
+              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+              className="w-8 h-8 rounded-full border border-zinc-300 dark:border-zinc-700 bg-[var(--accent)] text-white font-bold text-xs flex items-center justify-center shadow-xs hover:opacity-90 transition-all focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+              title="Account options"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              {userInitial}
             </button>
+
+            {/* Profile Popover Menu */}
+            {profileMenuOpen && (
+              <div className="absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-2 z-50 animate-in fade-in zoom-in-95 duration-100 divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                {/* Account Header */}
+                <div className="p-2.5 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-white font-bold text-sm flex items-center justify-center shadow-sm flex-shrink-0">
+                    {userInitial}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                      {user?.name || 'Administrator'}
+                    </div>
+                    <div className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 truncate">
+                      {user?.email || 'admin@samast.pro'}
+                    </div>
+                    <div className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700/60">
+                      Personal Workspace
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Navigation */}
+                <div className="py-1">
+                  <Link
+                    to="/dashboard/settings"
+                    onClick={() => setProfileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                  >
+                    <Settings className="w-4 h-4 text-zinc-500" />
+                    <span>Account &amp; Settings</span>
+                  </Link>
+                  <Link
+                    to="/dashboard/api-keys"
+                    onClick={() => setProfileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                  >
+                    <Key className="w-4 h-4 text-zinc-500" />
+                    <span>API Keys &amp; Tokens</span>
+                  </Link>
+                  <Link
+                    to="/docs"
+                    onClick={() => setProfileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                  >
+                    <BookOpen className="w-4 h-4 text-zinc-500" />
+                    <span>Documentation</span>
+                  </Link>
+                </div>
+
+                {/* Sign Out Button */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      logout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -231,6 +309,7 @@ export default function AppShell() {
             </div>
 
             <button
+              type="button"
               onClick={() => {
                 setMobileMenuOpen(false);
                 logout();
@@ -249,10 +328,10 @@ export default function AppShell() {
         </div>
       </div>
 
-      {/* Main Layout Body */}
-      <div className="flex-1 flex pb-16 md:pb-0">
-        {/* Navigation Sidebar (Desktop) */}
-        <aside className="w-56 border-r p-3 hidden md:flex flex-col justify-between border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex-shrink-0">
+      {/* Main Layout Body (Locked Layout, Body Content Scrollable) */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Fixed Navigation Sidebar (Desktop) */}
+        <aside className="w-56 h-full flex-shrink-0 border-r p-3 hidden md:flex flex-col justify-between overflow-y-auto border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
           <div className="space-y-0.5">
             <div className="text-[10px] font-mono font-semibold text-zinc-500 uppercase tracking-wider px-2 py-1.5 mb-1">
               Platform
@@ -286,8 +365,8 @@ export default function AppShell() {
           </div>
         </aside>
 
-        {/* Dynamic Route View */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full overflow-x-hidden">
+        {/* Dynamic Route Scrollable View Area */}
+        <main className="flex-1 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 w-full pb-20 md:pb-8">
           <Outlet />
         </main>
       </div>
@@ -318,6 +397,7 @@ export default function AppShell() {
 
         {/* More/Drawer button in bottom bar */}
         <button
+          type="button"
           onClick={() => setMobileMenuOpen(true)}
           className={`flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors ${
             mobileMenuOpen 
