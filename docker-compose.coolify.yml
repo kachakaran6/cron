@@ -33,7 +33,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
-      FRONTEND_URL: ${FRONTEND_URL:-http://zbye8jt5amnysrtaagznpmht.3.110.164.62.sslip.io}
+      FRONTEND_URL: ${FRONTEND_URL:-http://7srwaez06orjz74tw4mnkvi1.13.207.216.68.sslip.io}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-b5e8f498c39d8461719c8fba5a4c9c1b72e90c8831ef09c0d123456789abcdef}
     networks:
       - default
