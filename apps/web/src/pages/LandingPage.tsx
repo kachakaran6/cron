@@ -120,7 +120,7 @@ function CronSchedulerVisualizer({ dark }: { dark: boolean }) {
   }, []);
 
   return (
-    <div className={`w-full max-w-3xl mx-auto mt-12 rounded-xl border p-4 sm:p-6 shadow-2xl transition-all font-mono text-xs ${
+    <div className={`w-full max-w-3xl mx-auto mt-2 rounded-xl border p-3 sm:p-4 shadow-2xl transition-all font-mono text-xs ${
       dark ? 'border-zinc-800 bg-zinc-950/90' : 'border-zinc-300 bg-white/95'
     }`}>
       {/* Visualizer Terminal Top Bar */}
@@ -282,42 +282,42 @@ export default function LandingPage() {
 
       {/* ── Hero ─────────────────────────────────────────────────── */}
       <main className="flex-1">
-        <section className="px-4 sm:px-6 pt-20 sm:pt-24 pb-16 sm:pb-20 max-w-5xl mx-auto">
+        <section className="px-4 sm:px-6 pt-6 sm:pt-8 pb-10 max-w-5xl mx-auto">
           <div className="flex flex-col items-center text-center">
             {/* Release tag */}
-            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-mono mb-6 ${
-              dark ? 'border-zinc-800 bg-zinc-900 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
+            <div className={`inline-flex items-center gap-2 px-3 py-0.5 rounded-full border text-[11px] font-mono mb-3 ${
+              dark ? 'border-zinc-800 bg-zinc-900/90 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
             }`}>
               <span className="font-semibold text-zinc-800 dark:text-zinc-200">v1.4.2</span>
               <span>·</span>
-              <span>Production HTTP Scheduling</span>
+              <span>Production HTTP Scheduling Engine</span>
             </div>
 
-            <h1 className={`text-[2.5rem] sm:text-6xl font-bold tracking-tight leading-tight max-w-3xl mb-6 ${
+            <h1 className={`text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight max-w-3xl mb-2.5 ${
               dark ? 'text-zinc-50' : 'text-zinc-900'
             }`}>
               Scheduled HTTP&nbsp;jobs,{' '}
               <span className={dark ? 'text-zinc-400' : 'text-zinc-500'}>done right.</span>
             </h1>
 
-            <p className={`text-sm sm:text-base max-w-2xl leading-relaxed mb-8 ${dark ? 'text-zinc-400' : 'text-zinc-600'}`}>
+            <p className={`text-xs sm:text-sm max-w-xl leading-relaxed mb-4 ${dark ? 'text-zinc-400' : 'text-zinc-600'}`}>
               Samast Cron is a production-grade cron scheduling platform. Define schedules with cron expressions,
               inspect every execution, configure headers and timeouts, and receive alerts when jobs fail.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto justify-center">
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto justify-center mb-4">
               <Link
                 to={isAuthenticated ? '/dashboard' : '/register'}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-semibold px-5 py-2.5 rounded transition-colors btn-accent"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs font-semibold px-4 py-2 rounded transition-all btn-accent shadow-sm"
               >
                 {isAuthenticated ? 'Open Dashboard' : 'Create free account'}
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
               <a
                 href="/api/docs"
                 target="_blank"
                 rel="noreferrer"
-                className={`w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-medium px-5 py-2.5 rounded border transition-colors ${
+                className={`w-full sm:w-auto flex items-center justify-center gap-1.5 text-xs font-medium px-4 py-2 rounded border transition-colors ${
                   dark ? 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white hover:border-zinc-700' : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
                 }`}
               >
@@ -326,16 +326,28 @@ export default function LandingPage() {
               </a>
             </div>
 
+            {/* Above-The-Fold Stats Ribbon */}
+            <div className="w-full max-w-3xl grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+              <div className={`p-2 rounded-lg border text-center font-mono ${dark ? 'bg-zinc-900/60 border-zinc-800/80' : 'bg-zinc-50 border-zinc-200'}`}>
+                <div className="text-base sm:text-lg font-black tracking-tight text-zinc-900 dark:text-zinc-100">500</div>
+                <div className="text-[10px] text-zinc-500 font-sans">Max jobs / account</div>
+              </div>
+              <div className={`p-2 rounded-lg border text-center font-mono ${dark ? 'bg-zinc-900/60 border-zinc-800/80' : 'bg-zinc-50 border-zinc-200'}`}>
+                <div className="text-base sm:text-lg font-black tracking-tight text-zinc-900 dark:text-zinc-100">60s</div>
+                <div className="text-[10px] text-zinc-500 font-sans">Min interval</div>
+              </div>
+              <div className={`p-2 rounded-lg border text-center font-mono ${dark ? 'bg-zinc-900/60 border-zinc-800/80' : 'bg-zinc-50 border-zinc-200'}`}>
+                <div className="text-base sm:text-lg font-black tracking-tight text-zinc-900 dark:text-zinc-100">30d</div>
+                <div className="text-[10px] text-zinc-500 font-sans">Log retention</div>
+              </div>
+              <div className={`p-2 rounded-lg border text-center font-mono ${dark ? 'bg-zinc-900/60 border-zinc-800/80' : 'bg-zinc-50 border-zinc-200'}`}>
+                <div className="text-base sm:text-lg font-black tracking-tight text-emerald-600 dark:text-emerald-400">99.9%</div>
+                <div className="text-[10px] text-zinc-500 font-sans">Uptime SLA</div>
+              </div>
+            </div>
+
             {/* Cron Animation Visualizer */}
             <CronSchedulerVisualizer dark={dark} />
-          </div>
-
-          {/* Stats Row (High Contrast and Bold in both Light and Dark Mode) */}
-          <div className={`mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 pt-10 border-t ${dark ? 'border-zinc-800/60' : 'border-zinc-200'}`}>
-            <StatItem dark={dark} value="500" label="Max cron jobs / account" />
-            <StatItem dark={dark} value="60s" label="Minimum interval" />
-            <StatItem dark={dark} value="30d" label="Execution history" />
-            <StatItem dark={dark} value="99.9%" label="Infrastructure uptime" />
           </div>
         </section>
 
