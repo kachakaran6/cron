@@ -11,12 +11,9 @@ services:
       - api
     expose:
       - '80'
-    labels:
-      - 'coolify.managed=true'
-      - 'traefik.enable=true'
-      - 'traefik.http.routers.b9isp2rfba3f3nrouxuqvqsr-web.rule=Host(`b9isp2rfba3f3nrouxuqvqsr.137.23.49.73.sslip.io`)'
-      - 'traefik.http.routers.b9isp2rfba3f3nrouxuqvqsr-web.entrypoints=http'
-      - 'traefik.http.services.b9isp2rfba3f3nrouxuqvqsr-web.loadbalancer.server.port=80'
+    networks:
+      - default
+      - coolify
 
   # 2. NestJS REST & OpenAPI API Server
   api:
@@ -38,6 +35,9 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
       FRONTEND_URL: ${FRONTEND_URL:-http://b9isp2rfba3f3nrouxuqvqsr.137.23.49.73.sslip.io}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-b5e8f498c39d8461719c8fba5a4c9c1b72e90c8831ef09c0d123456789abcdef}
+    networks:
+      - default
+      - coolify
 
   # 3. PostgreSQL Database
   postgres:
@@ -49,6 +49,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-cron_saas}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - default
 
   # 4. Redis Queue & Lock Manager
   redis:
@@ -57,6 +59,8 @@ services:
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_pass_2026}
     volumes:
       - redis_data:/data
+    networks:
+      - default
 
   # 5. Distributed Scheduler Microservice
   scheduler:
@@ -74,6 +78,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
+    networks:
+      - default
 
   # 6. Isolated HTTP Execution Worker Pool
   worker:
@@ -92,6 +98,13 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
       WORKER_CONCURRENCY: 50
+    networks:
+      - default
+
+networks:
+  default:
+  coolify:
+    external: true
 
 volumes:
   postgres_data:
