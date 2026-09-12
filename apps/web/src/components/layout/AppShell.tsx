@@ -17,7 +17,8 @@ import {
   Menu,
   X,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Shield
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -51,7 +52,17 @@ export default function AppShell() {
     });
   };
 
-  const navItems = [
+  interface NavItem {
+    label: string;
+    to: string;
+    icon: any;
+    exact?: boolean;
+    badge?: string;
+  }
+
+  const isAdmin = user?.role === 'admin' || user?.email?.toLowerCase() === 'kachakaran6@gmail.com';
+
+  const baseNavItems: NavItem[] = [
     { label: 'Overview', to: '/dashboard', icon: LayoutGrid, exact: true },
     { label: 'Schedules', to: '/dashboard/schedules', icon: Clock },
     { label: 'Execution History', to: '/dashboard/executions', icon: Activity },
@@ -60,6 +71,10 @@ export default function AppShell() {
     { label: 'API Keys', to: '/dashboard/api-keys', icon: Key },
     { label: 'Settings', to: '/dashboard/settings', icon: Settings },
   ];
+
+  const navItems: NavItem[] = isAdmin
+    ? [...baseNavItems, { label: 'Developer Admin', to: '/dashboard/admin', icon: Shield, badge: 'ADMIN' }]
+    : baseNavItems;
 
   const mobileQuickItems = [
     { label: 'Overview', to: '/dashboard', icon: LayoutGrid, exact: true },

@@ -1,0 +1,704 @@
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  ShieldAlert,
+  Activity,
+  Users,
+  Terminal,
+  Settings,
+  RefreshCw,
+  Search,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Shield,
+  UserCheck,
+  Zap,
+  Server,
+  ChevronRight,
+  Database,
+  Sliders,
+  Cpu,
+  HardDrive,
+  Copy,
+  Check,
+} from 'lucide-react';
+import {
+  fetchAdminStats,
+  fetchAdminLogs,
+  fetchAdminUsers,
+  updateAdminUserRole,
+  updateAdminUserPlan,
+  fetchAdminConfig,
+  updateAdminConfig,
+} from '../../services/api';
+import { TableSkeleton } from '../../components/ui/Skeleton';
+import { CodeBlock } from '../../components/ui/CodeBlock';
+
+export default function AdminDashboardPage() {
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'metrics' | 'logs' | 'users' | 'config'>('metrics');
+
+  // Logs state
+  const [logLevel, setLogLevel] = useState<string>('ALL');
+  const [logSearch, setLogSearch] = useState<string>('');
+  const [expandedLogIndex, setExpandedLogIndex] = useState<number | null>(null);
+
+  // User filter state
+  const [userSearch, setUserSearch] = useState<string>('');
+
+  // Queries
+  const { data: stats, isLoading: isStatsLoading, refetch: refetchStats } = useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: fetchAdminStats,
+    refetchInterval: 15000,
+  });
+
+  const { data: logsData, isLoading: isLogsLoading, refetch: refetchLogs } = useQuery({
+    queryKey: ['admin-logs', logLevel, logSearch],
+    queryFn: () => fetchAdminLogs({ level: logLevel, search: logSearch, limit: 100 }),
+    refetchInterval: 10000,
+  });
+
+  const { data: usersData, isLoading: isUsersLoading, refetch: refetchUsers } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: fetchAdminUsers,
+  });
+
+  const { data: configData, isLoading: isConfigLoading, refetch: refetchConfig } = useQuery({
+    queryKey: ['admin-config'],
+    queryFn: fetchAdminConfig,
+  });
+
+  // Local config edit state
+  const [configForm, setConfigForm] = useState<any>(null);
+
+  React.useEffect(() => {
+    if (configData && !configForm) {
+      setConfigForm(configData);
+    }
+  }, [configData]);
+
+  // Mutations
+  const roleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: 'admin' | 'user' }) => updateAdminUserRole(userId, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+    },
+  });
+
+  const planMutation = useMutation({
+    mutationFn: ({ userId, planId }: { userId: string; planId: string }) => updateAdminUserPlan(userId, planId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    },
+  });
+
+  const configMutation = useMutation({
+    mutationFn: updateAdminConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-config'] });
+      alert('System runtime configuration updated successfully!');
+    },
+  });
+
+  const filteredUsers = usersData?.filter(
+    (u) =>
+      u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+      (u.name && u.name.toLowerCase().includes(userSearch.toLowerCase())) ||
+      (u.organization?.name && u.organization.name.toLowerCase().includes(userSearch.toLowerCase()))
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Developer Admin Center</h1>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              <Shield className="w-3 h-3" />
+              SYSTEM ADMIN
+            </span>
+          </div>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
+            Real-time diagnostics, file log stream, user consumption, role promotion, and engine runtime configuration.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              refetchStats();
+              refetchLogs();
+              refetchUsers();
+              refetchConfig();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shadow-xs"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Refresh system</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs Bar */}
+      <div className="flex items-center gap-1 border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('metrics')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'metrics'
+              ? 'border-[var(--accent)] text-[var(--accent)]'
+              : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          <span>Overview & Metrics</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('logs')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'logs'
+              ? 'border-[var(--accent)] text-[var(--accent)]'
+              : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+          }`}
+        >
+          <Terminal className="w-4 h-4" />
+          <span>File Log Stream & Traces</span>
+          {logsData?.total ? (
+            <span className="ml-1 px-1.5 py-0.2 rounded-full bg-zinc-200 dark:bg-zinc-800 text-[10px] font-mono">
+              {logsData.total}
+            </span>
+          ) : null}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'users'
+              ? 'border-[var(--accent)] text-[var(--accent)]'
+              : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>User Directory & Roles</span>
+          {usersData?.length ? (
+            <span className="ml-1 px-1.5 py-0.2 rounded-full bg-zinc-200 dark:bg-zinc-800 text-[10px] font-mono">
+              {usersData.length}
+            </span>
+          ) : null}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('config')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'config'
+              ? 'border-[var(--accent)] text-[var(--accent)]'
+              : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+          }`}
+        >
+          <Sliders className="w-4 h-4" />
+          <span>Runtime Configuration</span>
+        </button>
+      </div>
+
+      {/* ── TAB 1: METRICS & ANALYTICS ────────────────────────────────────── */}
+      {activeTab === 'metrics' && (
+        <div className="space-y-6">
+          {/* Top Key Metrics Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs">
+              <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                <span>Total Users</span>
+                <Users className="w-4 h-4 text-blue-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
+                {stats?.overview?.totalUsers ?? '—'}
+              </div>
+              <p className="text-[11px] text-zinc-500 mt-1">
+                {stats?.overview?.totalOrganizations ?? 0} active organizations
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs">
+              <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                <span>Total Scheduled Jobs</span>
+                <Zap className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
+                {stats?.overview?.totalCronJobs ?? '—'}
+              </div>
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                {stats?.overview?.activeCronJobs ?? 0} enabled & executing
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs">
+              <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                <span>24h Request Success</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono tracking-tight text-emerald-600 dark:text-emerald-400">
+                {stats?.executions24h?.successRatePercentage ?? 100}%
+              </div>
+              <p className="text-[11px] text-zinc-500 mt-1">
+                {stats?.executions24h?.totalRuns ?? 0} total HTTP executions
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs">
+              <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                <span>Avg Latency (24h)</span>
+                <Activity className="w-4 h-4 text-violet-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
+                {stats?.executions24h?.averageLatencyMs ?? 0}
+                <span className="text-xs font-normal text-zinc-500 ml-1">ms</span>
+              </div>
+              <p className="text-[11px] text-zinc-500 mt-1">Worker HTTP execution time</p>
+            </div>
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Throughput Chart (2 cols) */}
+            <div className="lg:col-span-2 p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    12-Hour Request Throughput & Success Rates
+                  </h3>
+                  <p className="text-xs text-zinc-500">HTTP requests dispatched per hourly interval</p>
+                </div>
+                <div className="flex items-center gap-3 text-xs font-mono">
+                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> Success
+                  </span>
+                  <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" /> Failed
+                  </span>
+                </div>
+              </div>
+
+              {/* Bar Chart Visualization */}
+              <div className="pt-4 h-48 flex items-end justify-between gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                {stats?.charts?.hourlyThroughput?.map((item: any, idx: number) => {
+                  const maxTotal = Math.max(
+                    ...stats.charts.hourlyThroughput.map((h: any) => h.total),
+                    10
+                  );
+                  const heightPercent = Math.min(100, (item.total / maxTotal) * 100);
+                  const successPercent = item.total > 0 ? (item.success / item.total) * 100 : 100;
+
+                  return (
+                    <div key={idx} className="flex-1 flex flex-col items-center gap-2 group relative">
+                      {/* Tooltip */}
+                      <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col bg-zinc-900 text-white text-[10px] p-2 rounded shadow-lg z-20 whitespace-nowrap">
+                        <span className="font-semibold">{item.hour}</span>
+                        <span>Total: {item.total}</span>
+                        <span className="text-emerald-400">Success: {item.success}</span>
+                        <span className="text-rose-400">Failed: {item.failed}</span>
+                      </div>
+
+                      <div className="w-full bg-zinc-100 dark:bg-zinc-900 rounded-t h-36 flex items-end overflow-hidden">
+                        <div
+                          style={{ height: `${Math.max(8, heightPercent)}%` }}
+                          className="w-full flex flex-col justify-end transition-all duration-300"
+                        >
+                          <div
+                            style={{ height: `${successPercent}%` }}
+                            className="bg-emerald-500/80 hover:bg-emerald-500 transition-colors w-full"
+                          />
+                          {item.failed > 0 && (
+                            <div
+                              style={{ height: `${100 - successPercent}%` }}
+                              className="bg-rose-500 hover:bg-rose-600 transition-colors w-full"
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-zinc-500">{item.hour}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Server Health Gauges (1 col) */}
+            <div className="p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                  <Server className="w-4 h-4 text-[var(--accent)]" />
+                  <span>Node Process Health</span>
+                </h3>
+                <span className="px-2 py-0.5 text-[10px] font-bold font-mono rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  {stats?.systemHealth?.status || 'HEALTHY'}
+                </span>
+              </div>
+
+              <div className="space-y-3.5 text-xs font-mono">
+                <div>
+                  <div className="flex justify-between text-zinc-600 dark:text-zinc-400 mb-1">
+                    <span>Heap Memory Used</span>
+                    <span>{stats?.systemHealth?.heapUsedMb ?? 0} MB / {stats?.systemHealth?.heapTotalMb ?? 0} MB</span>
+                  </div>
+                  <div className="w-full bg-zinc-100 dark:bg-zinc-900 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-[var(--accent)] h-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          ((stats?.systemHealth?.heapUsedMb || 0) /
+                            (stats?.systemHealth?.heapTotalMb || 1)) *
+                            100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 space-y-2 border-t border-zinc-100 dark:border-zinc-900">
+                  <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                    <span className="text-zinc-500">RSS Process Memory:</span>
+                    <span className="font-semibold text-zinc-900 dark:text-zinc-100">{stats?.systemHealth?.rssMemoryMb ?? 0} MB</span>
+                  </div>
+
+                  <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                    <span className="text-zinc-500">System Uptime:</span>
+                    <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                      {Math.floor((stats?.systemHealth?.uptimeSeconds || 0) / 3600)}h{' '}
+                      {Math.floor(((stats?.systemHealth?.uptimeSeconds || 0) % 3600) / 60)}m
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                    <span className="text-zinc-500">Node Runtime:</span>
+                    <span className="font-semibold text-zinc-900 dark:text-zinc-100">{stats?.systemHealth?.nodeVersion ?? 'v24.0.0'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 2: FILE LOG STREAM & TRACES ────────────────────────────────── */}
+      {activeTab === 'logs' && (
+        <div className="space-y-4">
+          {/* Controls Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Severity Filter:</span>
+              {['ALL', 'ERROR', 'WARN', 'INFO'].map((lvl) => (
+                <button
+                  key={lvl}
+                  onClick={() => setLogLevel(lvl)}
+                  className={`px-2.5 py-1 text-xs rounded-md font-mono transition-colors ${
+                    logLevel === lvl
+                      ? 'bg-[var(--accent)] text-white font-bold'
+                      : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                  }`}
+                >
+                  {lvl}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative flex-1 sm:max-w-xs">
+              <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search file log text, endpoints, stack traces..."
+                value={logSearch}
+                onChange={(e) => setLogSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-zinc-900 dark:text-zinc-100 focus-ring placeholder-zinc-400"
+              />
+            </div>
+          </div>
+
+          {/* Logs List Container */}
+          <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-950 text-zinc-100 p-4 font-mono text-xs space-y-2 max-h-[600px] overflow-y-auto">
+            {isLogsLoading ? (
+              <div className="py-12 text-center text-zinc-500">Streaming application logs from files...</div>
+            ) : !logsData?.logs?.length ? (
+              <div className="py-12 text-center text-zinc-500">No log entries found matching criteria.</div>
+            ) : (
+              logsData.logs.map((log: any, idx: number) => (
+                <div
+                  key={idx}
+                  className={`border-b border-zinc-900/80 pb-2 transition-colors ${
+                    expandedLogIndex === idx ? 'bg-zinc-900/60 p-3 rounded-lg' : 'hover:bg-zinc-900/30'
+                  }`}
+                >
+                  <div
+                    onClick={() => setExpandedLogIndex(expandedLogIndex === idx ? null : idx)}
+                    className="flex items-start justify-between cursor-pointer gap-2"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${
+                          log.level === 'ERROR'
+                            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                            : log.level === 'WARN'
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        }`}
+                      >
+                        {log.level}
+                      </span>
+                      <span className="text-zinc-500 text-[11px] whitespace-nowrap">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span className="text-zinc-400 text-[11px] font-semibold">[{log.category || 'HTTP'}]</span>
+                      <span className="text-zinc-200 truncate">{log.message}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 text-[11px] text-zinc-500">
+                      {log.durationMs && <span>{log.durationMs}ms</span>}
+                      <ChevronRight
+                        className={`w-3.5 h-3.5 transition-transform ${
+                          expandedLogIndex === idx ? 'rotate-90' : ''
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Expanded Trace Details */}
+                  {expandedLogIndex === idx && (
+                    <div className="mt-3 pt-3 border-t border-zinc-800 space-y-2 text-[11px] animate-in fade-in duration-150">
+                      {log.userEmail && (
+                        <div className="text-zinc-400">
+                          <span className="text-zinc-500">User Email:</span> {log.userEmail} ({log.userId})
+                        </div>
+                      )}
+                      {log.stack && (
+                        <div className="p-3 bg-black/80 rounded text-rose-300 font-mono text-[10px] overflow-x-auto whitespace-pre">
+                          {log.stack}
+                        </div>
+                      )}
+                      <div className="text-zinc-500 text-[10px]">
+                        Raw Record JSON: <code className="text-zinc-300">{JSON.stringify(log)}</code>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 3: USER DIRECTORY & PROMOTION ──────────────────────────────── */}
+      {activeTab === 'users' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2">
+            <div className="relative flex-1 sm:max-w-xs">
+              <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search users or emails..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-zinc-900 dark:text-zinc-100 focus-ring placeholder-zinc-400"
+              />
+            </div>
+          </div>
+
+          <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-zinc-50 dark:bg-zinc-900/80 text-[11px] font-mono uppercase tracking-wider text-zinc-500 border-b border-zinc-200 dark:border-zinc-800">
+                  <tr>
+                    <th className="px-4 py-3">User / Email</th>
+                    <th className="px-4 py-3">Role</th>
+                    <th className="px-4 py-3">Organization / Plan</th>
+                    <th className="px-4 py-3">Cron Jobs</th>
+                    <th className="px-4 py-3">Registered Date</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                  {isUsersLoading ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
+                        Loading users directory...
+                      </td>
+                    </tr>
+                  ) : !filteredUsers?.length ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
+                        No users found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map((u: any) => (
+                      <tr key={u.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40">
+                        <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs">
+                              {u.email[0]}
+                            </div>
+                            <div>
+                              <div>{u.name || u.email.split('@')[0]}</div>
+                              <div className="text-[11px] font-mono text-zinc-500">{u.email}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3">
+                          {u.role === 'admin' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                              <Shield className="w-3 h-3" /> ADMIN
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                              USER
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-zinc-800 dark:text-zinc-200">
+                            {u.organization?.name || 'Personal'}
+                          </div>
+                          <select
+                            value={u.planId}
+                            onChange={(e) =>
+                              planMutation.mutate({ userId: u.id, planId: e.target.value })
+                            }
+                            className="mt-0.5 bg-transparent text-[11px] font-mono text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 rounded px-1.5 py-0.5"
+                          >
+                            <option value="free">free plan</option>
+                            <option value="pro">pro plan</option>
+                            <option value="enterprise">enterprise plan</option>
+                          </select>
+                        </td>
+
+                        <td className="px-4 py-3 font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                          {u.jobCount} jobs
+                        </td>
+
+                        <td className="px-4 py-3 text-zinc-500 font-mono text-[11px]">
+                          {new Date(u.createdAt).toLocaleDateString()}
+                        </td>
+
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => {
+                              const newRole = u.role === 'admin' ? 'user' : 'admin';
+                              if (
+                                confirm(
+                                  `Are you sure you want to ${
+                                    newRole === 'admin' ? 'promote' : 'demote'
+                                  } ${u.email} to ${newRole.toUpperCase()}?`
+                                )
+                              ) {
+                                roleMutation.mutate({ userId: u.id, role: newRole });
+                              }
+                            }}
+                            className={`px-3 py-1 text-xs rounded-md font-medium transition-colors border ${
+                              u.role === 'admin'
+                                ? 'border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                                : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
+                            }`}
+                          >
+                            {u.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 4: RUNTIME CONFIGURATION ────────────────────────────────────── */}
+      {activeTab === 'config' && (
+        <div className="max-w-3xl space-y-6">
+          <div className="p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs space-y-4">
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-[var(--accent)]" />
+              <span>Execution Worker & Security Rules</span>
+            </h3>
+
+            {isConfigLoading ? (
+              <div className="py-6 text-center text-xs text-zinc-500 font-mono">Loading configuration...</div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  configMutation.mutate(configForm);
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Worker Concurrency Threads
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={configForm?.workerConcurrency || 50}
+                      onChange={(e) =>
+                        setConfigForm({ ...configForm, workerConcurrency: Number(e.target.value) })
+                      }
+                      className="w-full px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md font-mono text-zinc-900 dark:text-zinc-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Default Execution Timeout (ms)
+                    </label>
+                    <input
+                      type="number"
+                      min={1000}
+                      max={60000}
+                      value={configForm?.defaultTimeoutMs || 10000}
+                      onChange={(e) =>
+                        setConfigForm({ ...configForm, defaultTimeoutMs: Number(e.target.value) })
+                      }
+                      className="w-full px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md font-mono text-zinc-900 dark:text-zinc-100"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                  <label className="flex items-center gap-2 font-medium text-zinc-800 dark:text-zinc-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={configForm?.blockPrivateIps !== false}
+                      onChange={(e) => setConfigForm({ ...configForm, blockPrivateIps: e.target.checked })}
+                      className="w-4 h-4 rounded text-[var(--accent)]"
+                    />
+                    <span>Enforce SSRF Private IP Blocking</span>
+                  </label>
+                  <p className="text-[11px] text-zinc-500 mt-0.5 ml-6">
+                    Prevents workers from calling internal IP ranges (10.0.0.0/8, 127.0.0.1, AWS metadata endpoints).
+                  </p>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <button
+                    type="submit"
+                    disabled={configMutation.isPending}
+                    className="px-4 py-2 btn-accent font-semibold rounded-md shadow-sm transition-all"
+                  >
+                    {configMutation.isPending ? 'Saving...' : 'Save Configuration'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

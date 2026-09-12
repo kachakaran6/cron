@@ -5,6 +5,7 @@ export interface User {
   id: string;
   email: string;
   name: string | null;
+  role?: string;
 }
 
 interface AuthContextType {
@@ -32,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     apiGetMe()
       .then(({ user }) => {
-        setUser({ id: user.id, email: user.email, name: user.name });
+        setUser({ id: user.id, email: user.email, name: user.name, role: user.role });
       })
       .catch(() => {
         // Token is invalid or expired — clear it
@@ -47,13 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const data = await apiLogin(email, password);
     setAuthToken(data.token);
-    setUser({ id: data.user.id, email: data.user.email, name: data.user.name });
+    setUser({ id: data.user.id, email: data.user.email, name: data.user.name, role: data.user.role });
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
     const data = await apiRegister(name, email, password);
     setAuthToken(data.token);
-    setUser({ id: data.user.id, email: data.user.email, name: data.user.name });
+    setUser({ id: data.user.id, email: data.user.email, name: data.user.name, role: data.user.role });
   }, []);
 
   const logout = useCallback(() => {

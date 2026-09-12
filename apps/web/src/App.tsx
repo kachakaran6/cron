@@ -24,6 +24,7 @@ import MonitorsListPage from './features/monitors/MonitorsListPage';
 import NotificationsPage from './features/notifications/NotificationsPage';
 import ApiKeysPage from './features/api-keys/ApiKeysPage';
 import SettingsPage from './features/settings/SettingsPage';
+import AdminDashboardPage from './features/admin/AdminDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 const queryClient = new QueryClient({
@@ -62,6 +63,7 @@ export default function App() {
                   <Route path="notifications" element={<NotificationsPage />} />
                   <Route path="api-keys" element={<ApiKeysPage />} />
                   <Route path="settings" element={<SettingsPage />} />
+                  <Route path="admin" element={<AdminDashboardPage />} />
                 </Route>
               </Route>
 

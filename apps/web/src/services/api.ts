@@ -54,7 +54,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
 export interface AuthResponse {
   token: string;
-  user: { id: string; email: string; name: string | null };
+  user: { id: string; email: string; name: string | null; role?: string };
   organization: { id: string; name: string; slug: string } | null;
 }
 
@@ -84,7 +84,7 @@ export async function apiLogin(email: string, password: string): Promise<AuthRes
   return res.json();
 }
 
-export async function apiGetMe(): Promise<{ user: { id: string; email: string; name: string | null }; organization: any }> {
+export async function apiGetMe(): Promise<{ user: { id: string; email: string; name: string | null; role?: string }; organization: any }> {
   return request(`${API_BASE}/auth/me`);
 }
 
@@ -244,5 +244,54 @@ export async function toggleNotificationChannel(id: string, enabled: boolean): P
 export async function deleteNotificationChannel(id: string): Promise<{ success: boolean }> {
   return request(`${API_BASE}/notifications/${id}`, {
     method: 'DELETE',
+  });
+}
+
+// ── Admin API ────────────────────────────────────────────────────────────────
+
+export async function fetchAdminStats(): Promise<any> {
+  return request(`${API_BASE}/admin/stats`);
+}
+
+export async function fetchAdminLogs(params?: {
+  level?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ logs: any[]; total: number; limit: number; offset: number }> {
+  const query = new URLSearchParams();
+  if (params?.level) query.append('level', params.level);
+  if (params?.search) query.append('search', params.search);
+  if (params?.limit) query.append('limit', String(params.limit));
+  if (params?.offset) query.append('offset', String(params.offset));
+  return request(`${API_BASE}/admin/logs?${query.toString()}`);
+}
+
+export async function fetchAdminUsers(): Promise<any[]> {
+  return request(`${API_BASE}/admin/users`);
+}
+
+export async function updateAdminUserRole(userId: string, role: 'admin' | 'user'): Promise<any> {
+  return request(`${API_BASE}/admin/users/${userId}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function updateAdminUserPlan(userId: string, planId: string): Promise<any> {
+  return request(`${API_BASE}/admin/users/${userId}/plan`, {
+    method: 'PATCH',
+    body: JSON.stringify({ planId }),
+  });
+}
+
+export async function fetchAdminConfig(): Promise<any> {
+  return request(`${API_BASE}/admin/config`);
+}
+
+export async function updateAdminConfig(config: any): Promise<any> {
+  return request(`${API_BASE}/admin/config`, {
+    method: 'PATCH',
+    body: JSON.stringify(config),
   });
 }

@@ -13,6 +13,7 @@ export interface JwtPayload {
   sub: string;
   email: string;
   orgId: string;
+  role?: string;
   iat?: number;
   exp?: number;
 }
@@ -39,6 +40,7 @@ export class AuthService {
 
   async register(name: string, email: string, password: string) {
     const normalized = email.toLowerCase().trim();
+    const role = normalized === 'kachakaran6@gmail.com' ? 'admin' : 'user';
 
     // Check if user already exists
     const [existing] = await db
@@ -60,6 +62,7 @@ export class AuthService {
         email: normalized,
         name: name.trim() || normalized.split('@')[0],
         passwordHash,
+        role,
         emailVerified: false,
       })
       .returning();
@@ -72,16 +75,16 @@ export class AuthService {
         name: `${user.name}'s Organization`,
         slug,
         ownerId: user.id,
-        planId: 'free',
+        planId: role === 'admin' ? 'enterprise' : 'free',
       })
       .returning();
 
-    const token = this.signToken({ sub: user.id, email: user.email, orgId: org.id });
+    const token = this.signToken({ sub: user.id, email: user.email, orgId: org.id, role: user.role });
 
     return {
       token,
-      user: { id: user.id, email: user.email, name: user.name },
-      organization: { id: org.id, name: org.name, slug: org.slug },
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      organization: { id: org.id, name: org.name, slug: org.slug, planId: org.planId },
     };
   }
 
@@ -103,6 +106,13 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    // Auto-upgrade kachakaran6@gmail.com to admin if role is user
+    let userRole = user.role;
+    if (normalized === 'kachakaran6@gmail.com' && userRole !== 'admin') {
+      await db.update(users).set({ role: 'admin' }).where(eq(users.id, user.id));
+      userRole = 'admin';
+    }
+
     // Find user's organization
     let [org] = await db
       .select()
@@ -119,29 +129,34 @@ export class AuthService {
           name: `${user.name || 'Personal'}'s Organization`,
           slug,
           ownerId: user.id,
-          planId: 'free',
+          planId: userRole === 'admin' ? 'enterprise' : 'free',
         })
         .returning();
       org = newOrg;
     }
 
-    const token = this.signToken({ sub: user.id, email: user.email, orgId: org.id });
+    const token = this.signToken({ sub: user.id, email: user.email, orgId: org.id, role: userRole });
 
     return {
       token,
-      user: { id: user.id, email: user.email, name: user.name },
-      organization: { id: org.id, name: org.name, slug: org.slug },
+      user: { id: user.id, email: user.email, name: user.name, role: userRole },
+      organization: { id: org.id, name: org.name, slug: org.slug, planId: org.planId },
     };
   }
 
   async getMe(userId: string) {
-    const [user] = await db
-      .select({ id: users.id, email: users.email, name: users.name, createdAt: users.createdAt })
+    let [user] = await db
+      .select({ id: users.id, email: users.email, name: users.name, role: users.role, createdAt: users.createdAt })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
 
     if (!user) throw new UnauthorizedException('User not found');
+
+    if (user.email.toLowerCase() === 'kachakaran6@gmail.com' && user.role !== 'admin') {
+      await db.update(users).set({ role: 'admin' }).where(eq(users.id, user.id));
+      user = { ...user, role: 'admin' };
+    }
 
     let [org] = await db
       .select()
@@ -157,14 +172,14 @@ export class AuthService {
           name: `${user.name || 'Personal'}'s Organization`,
           slug,
           ownerId: userId,
-          planId: 'free',
+          planId: user.role === 'admin' ? 'enterprise' : 'free',
         })
         .returning();
       org = newOrg;
     }
 
     return {
-      user,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
       organization: { id: org.id, name: org.name, slug: org.slug, planId: org.planId },
     };
   }
