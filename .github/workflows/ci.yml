@@ -1,45 +1,43 @@
-name: CI Pipeline
+name: CI & Docker Build Pipeline
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
-  build-and-test:
-    name: Monorepo Build & Typecheck
+  build-and-push:
+    name: Build & Push Microservice Docker Images
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v4
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          node-version: 22
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup pnpm 9
-        uses: pnpm/action-setup@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push API Image
+        uses: docker/build-push-action@v5
         with:
-          version: 9.1.0
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/cron-api:latest
 
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Cache pnpm dependencies
-        uses: actions/cache@v4
+      - name: Build & Push Web Image
+        uses: docker/build-push-action@v5
         with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Monorepo Turbo Build
-        run: pnpm build
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/cron-web:latest
