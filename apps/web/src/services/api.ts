@@ -84,6 +84,25 @@ export async function apiLogin(email: string, password: string): Promise<AuthRes
   return res.json();
 }
 
+export async function apiOAuthLogin(data: {
+  provider: 'google' | 'github';
+  email: string;
+  name?: string;
+  providerId?: string;
+  image?: string;
+}): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/auth/oauth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.message || 'OAuth authentication failed');
+  }
+  return res.json();
+}
+
 export async function apiGetMe(): Promise<{ user: { id: string; email: string; name: string | null; role?: string }; organization: any }> {
   return request(`${API_BASE}/auth/me`);
 }

@@ -16,8 +16,8 @@ import {
   User as UserIcon,
   Menu,
   X,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronLeft,
+  ChevronRight,
   Shield
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
@@ -98,16 +98,6 @@ export default function AppShell() {
             aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-
-          {/* Desktop Collapsible Sidebar Toggle Button */}
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className="hidden md:flex p-1.5 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {sidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
           </button>
 
           <Link to="/dashboard" className="flex items-center gap-2.5 group">
@@ -372,8 +362,17 @@ export default function AppShell() {
         <aside
           className={`${
             sidebarCollapsed ? 'w-16' : 'w-56'
-          } h-full flex-shrink-0 border-r p-3 hidden md:flex flex-col justify-between overflow-y-auto transition-all duration-300 ease-in-out border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950`}
+          } relative h-full flex-shrink-0 border-r p-3 hidden md:flex flex-col justify-between overflow-visible transition-all duration-300 ease-in-out border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950`}
         >
+          {/* Floating Border Toggle Arrow Button */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="hidden md:flex absolute -right-3 top-5 z-40 w-6 h-6 rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 items-center justify-center shadow-md hover:scale-110 transition-all cursor-pointer"
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+          </button>
           <div className="space-y-1">
             {!sidebarCollapsed && (
               <div className="text-[10px] font-mono font-semibold text-zinc-500 uppercase tracking-wider px-2 py-1.5 mb-1 animate-in fade-in duration-200">

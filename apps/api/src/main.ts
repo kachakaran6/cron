@@ -28,6 +28,8 @@ async function runStartupMigrations(logger: Logger) {
     `;
     await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`;
     await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(32) NOT NULL DEFAULT 'user'`;
+    await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS provider VARCHAR(32) NOT NULL DEFAULT 'email'`;
+    await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_id VARCHAR(255)`;
     await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false`;
     await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS image TEXT`;
     await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;

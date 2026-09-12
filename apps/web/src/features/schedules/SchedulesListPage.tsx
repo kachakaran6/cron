@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, RefreshCw, Search, Play, MoreVertical, Clock, Edit3, Trash2, Eye, ExternalLink } from 'lucide-react';
+import { Plus, RefreshCw, Search, Play, MoreVertical, Clock, Edit3, Trash2, Eye, ExternalLink, AlertTriangle } from 'lucide-react';
 import { fetchJobs, triggerJobExecution, deleteJob } from '../../services/api';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { TableSkeleton } from '../../components/ui/Skeleton';
@@ -11,6 +11,7 @@ export default function SchedulesListPage() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [jobToDelete, setJobToDelete] = useState<any>(null);
 
   useEffect(() => {
     const handleOutsideClick = () => setOpenMenuId(null);
@@ -32,8 +33,9 @@ export default function SchedulesListPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteJob,
+    mutationFn: (id: string) => deleteJob(id),
     onSuccess: () => {
+      setJobToDelete(null);
       queryClient.invalidateQueries({ queryKey: ['cron-schedules'] });
     },
     onError: (err: any) => {
@@ -98,181 +100,234 @@ export default function SchedulesListPage() {
                 <th className="px-4 py-3">Target</th>
                 <th className="px-4 py-3">Schedule</th>
                 <th className="px-4 py-3">Last execution</th>
-                <th className="px-4 py-3">Next execution</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-sans text-zinc-700 dark:text-zinc-300">
-              {isLoading && <TableSkeleton rows={5} cols={7} />}
-
-              {!isLoading && isError && (
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-rose-500 dark:text-rose-400 text-xs">
-                    Failed to load schedules. Please click Refresh to try again.
+                  <td colSpan={6} className="px-4 py-8">
+                    <TableSkeleton rows={5} cols={6} />
                   </td>
                 </tr>
-              )}
-
-              {!isLoading && !isError && filteredJobs?.length === 0 && (
+              ) : isError ? (
                 <tr>
-                  <td colSpan={7} className="p-4">
+                  <td colSpan={6} className="px-4 py-12 text-center text-zinc-600 dark:text-zinc-400">
+                    Failed to load scheduled jobs. Please check network connection.
+                  </td>
+                </tr>
+              ) : !filteredJobs || filteredJobs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12">
                     <EmptyState
                       icon={Clock}
-                      title="No scheduled requests"
-                      description="You don't have any scheduled requests yet. Create your first schedule to automatically call an HTTP endpoint on a recurring schedule."
-                      action={{
-                        label: "Create schedule",
-                        href: "/dashboard/schedules/new"
-                      }}
+                      title="No cron jobs found"
+                      description={searchQuery ? 'No schedules match your search query.' : 'Create your first scheduled HTTP endpoint request.'}
+                      action={searchQuery ? undefined : { label: 'Create schedule', href: '/dashboard/schedules/new' }}
                     />
                   </td>
                 </tr>
-              )}
+              ) : (
+                filteredJobs.map((job, idx) => {
+                  const isNearBottom = filteredJobs.length > 3 && idx >= filteredJobs.length - 2;
+                  const lastRun = job.logs?.[0] || job.executionLogs?.[0];
 
-              {!isLoading && filteredJobs?.map((job, idx) => {
-                const isNearBottom = filteredJobs.length > 2 && idx >= filteredJobs.length - 2;
-                return (
-                  <tr
-                    key={job.id}
-                    className={`hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors ${
-                      openMenuId === job.id ? 'relative z-30 bg-zinc-50/80 dark:bg-zinc-900/60' : 'relative z-0'
-                    }`}
-                  >
-                    <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">
-                      <Link to={`/dashboard/schedules/${job.id}`} className="hover:underline">
-                        {job.name}
-                      </Link>
-                    </td>
-
-                    <td className="px-4 py-3 font-mono text-zinc-600 dark:text-zinc-400 truncate max-w-xs">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700/50 mr-1.5 font-sans font-medium uppercase">
-                        {job.method}
-                      </span>
-                      {job.url}
-                    </td>
-
-                    <td className="px-4 py-3 font-mono text-zinc-800 dark:text-zinc-300">
-                      {job.schedule}
-                    </td>
-
-                    <td className="px-4 py-3 font-mono text-zinc-600 dark:text-zinc-400">
-                      {job.lastRunAt ? new Date(job.lastRunAt).toLocaleTimeString() : '—'}
-                    </td>
-
-                    <td className="px-4 py-3 font-mono text-zinc-600 dark:text-zinc-400">
-                      {new Date(job.nextRunAt).toLocaleTimeString()}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <StatusBadge status={job.enabled ? 'active' : 'paused'} />
-                    </td>
-
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {/* Direct Run button */}
-                        <button
-                          type="button"
-                          onClick={() => triggerMutation.mutate(job.id)}
-                          disabled={triggerMutation.isPending}
-                          title="Run now"
-                          className="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-                        >
-                          <Play className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Direct Edit button */}
-                        <Link
-                          to={`/dashboard/schedules/${job.id}/edit`}
-                          title="Edit cronjob"
-                          className="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
+                  return (
+                    <tr
+                      key={job.id}
+                      className={`hover:bg-zinc-50/80 dark:hover:bg-zinc-900/40 transition-colors ${
+                        openMenuId === job.id ? 'z-30 relative bg-zinc-50 dark:bg-zinc-900/60' : ''
+                      }`}
+                    >
+                      <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">
+                        <Link to={`/dashboard/schedules/${job.id}`} className="hover:underline flex items-center gap-2">
+                          <span>{job.name}</span>
+                          <span className="font-mono text-[10px] text-zinc-500 font-normal">[{job.method}]</span>
                         </Link>
+                      </td>
 
-                        {/* Three-dot dropdown menu */}
-                        <div className="relative inline-block text-left">
+                      <td className="px-4 py-3 font-mono text-[11px] text-zinc-600 dark:text-zinc-400 truncate max-w-[220px]" title={job.url}>
+                        {job.url}
+                      </td>
+
+                      <td className="px-4 py-3 font-mono text-zinc-700 dark:text-zinc-300">
+                        <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[11px]">
+                          {job.schedule}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-3 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
+                        {lastRun ? (
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`w-2 h-2 rounded-full ${
+                                lastRun.statusCode >= 200 && lastRun.statusCode < 300
+                                  ? 'bg-emerald-500'
+                                  : 'bg-rose-500'
+                              }`}
+                            />
+                            <span>HTTP {lastRun.statusCode || 200}</span>
+                            <span className="text-zinc-500">({lastRun.responseTime || lastRun.durationMs || 0}ms)</span>
+                          </div>
+                        ) : (
+                          <span className="text-zinc-400 italic">No executions yet</span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <StatusBadge status={job.enabled ? 'active' : 'paused'} />
+                      </td>
+
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenuId(openMenuId === job.id ? null : job.id);
-                            }}
-                            title="More options (Edit / Delete / View)"
-                            className={`p-1.5 rounded transition-colors ${
-                              openMenuId === job.id
-                                ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100'
-                                : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-                            }`}
+                            onClick={() => triggerMutation.mutate(job.id)}
+                            disabled={triggerMutation.isPending}
+                            title="Run now"
+                            className="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                           >
-                            <MoreVertical className="w-3.5 h-3.5" />
+                            <Play className="w-3.5 h-3.5" />
                           </button>
 
-                          {openMenuId === job.id && (
-                            <div
-                              onClick={(e) => e.stopPropagation()}
-                              className={`absolute right-0 w-48 rounded-lg shadow-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100 ${
-                                isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
+                          <Link
+                            to={`/dashboard/schedules/${job.id}/edit`}
+                            title="Edit cronjob"
+                            className="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </Link>
+
+                          <div className="relative inline-block text-left">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(openMenuId === job.id ? null : job.id);
+                              }}
+                              title="More options"
+                              className={`p-1.5 rounded transition-colors ${
+                                openMenuId === job.id
+                                  ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100'
+                                  : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                               }`}
                             >
-                              <Link
-                                to={`/dashboard/schedules/${job.id}`}
-                                onClick={() => setOpenMenuId(null)}
-                                className="flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                              >
-                                <Eye className="w-3.5 h-3.5 text-zinc-500" />
-                                <span>View details</span>
-                              </Link>
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
 
-                              <Link
-                                to={`/dashboard/schedules/${job.id}/edit`}
-                                onClick={() => setOpenMenuId(null)}
-                                className="flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors font-medium"
+                            {openMenuId === job.id && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className={`absolute right-0 w-48 rounded-lg shadow-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100 ${
+                                  isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
+                                }`}
                               >
-                                <Edit3 className="w-3.5 h-3.5 text-zinc-500" />
-                                <span>Edit cronjob</span>
-                              </Link>
+                                <Link
+                                  to={`/dashboard/schedules/${job.id}`}
+                                  onClick={() => setOpenMenuId(null)}
+                                  className="flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-zinc-500" />
+                                  <span>View details</span>
+                                </Link>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  triggerMutation.mutate(job.id);
-                                  setOpenMenuId(null);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-left"
-                              >
-                                <Play className="w-3.5 h-3.5 text-zinc-500" />
-                                <span>Run now</span>
-                              </button>
+                                <Link
+                                  to={`/dashboard/schedules/${job.id}/edit`}
+                                  onClick={() => setOpenMenuId(null)}
+                                  className="flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors font-medium"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-zinc-500" />
+                                  <span>Edit cronjob</span>
+                                </Link>
 
-                              <div className="my-1 border-t border-zinc-200 dark:border-zinc-800" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    triggerMutation.mutate(job.id);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-left"
+                                >
+                                  <Play className="w-3.5 h-3.5 text-zinc-500" />
+                                  <span>Run now</span>
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenMenuId(null);
-                                  if (window.confirm(`Are you sure you want to delete cronjob "${job.name}"? This action cannot be undone.`)) {
-                                    deleteMutation.mutate(job.id);
-                                  }
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left font-semibold"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete cronjob</span>
-                              </button>
-                            </div>
-                          )}
+                                <div className="my-1 border-t border-zinc-200 dark:border-zinc-800" />
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(null);
+                                    setJobToDelete(job);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left font-semibold"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete cronjob</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Custom Delete Confirmation Modal */}
+      {jobToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+              <div className="p-2 rounded-full bg-rose-500/10 border border-rose-500/20">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Delete Cronjob</h3>
+                <p className="text-xs text-zinc-500">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
+              Are you sure you want to delete <strong className="text-zinc-900 dark:text-zinc-100 font-semibold">{jobToDelete.name}</strong>? All associated execution logs and automated triggers will be permanently removed.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-900">
+              <button
+                type="button"
+                onClick={() => setJobToDelete(null)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md border border-zinc-300 dark:border-zinc-800 transition-colors"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => deleteMutation.mutate(jobToDelete.id)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-md transition-all shadow-xs flex items-center gap-2"
+              >
+                {deleteMutation.isPending ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete Cronjob</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

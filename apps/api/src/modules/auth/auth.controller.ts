@@ -32,6 +32,16 @@ export class AuthController {
     return this.authService.login(dto.email, dto.password);
   }
 
+  @Post('oauth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Authenticate via Google or GitHub OAuth' })
+  async oauth(@Body() body: { provider: 'google' | 'github'; email: string; name?: string; providerId?: string; image?: string }) {
+    if (!body.email) {
+      throw new UnauthorizedException('Email is required for OAuth authentication');
+    }
+    return this.authService.oauthLogin(body);
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('dashboard-jwt')

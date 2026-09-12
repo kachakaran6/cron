@@ -12,6 +12,7 @@ export default function ScheduleDetailPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'overview' | 'executions' | 'request'>('overview');
   const [selectedExecution, setSelectedExecution] = useState<any>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['schedule-detail', id],
@@ -84,11 +85,7 @@ export default function ScheduleDetailPage() {
           </Link>
 
           <button
-            onClick={() => {
-              if (confirm(`Are you sure you want to delete "${job.name}"?`)) {
-                deleteMutation.mutate();
-              }
-            }}
+            onClick={() => setShowDeleteModal(true)}
             disabled={deleteMutation.isPending}
             className="p-2 rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 transition-colors"
             title="Delete cronjob"
@@ -106,6 +103,47 @@ export default function ScheduleDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+              <div className="p-2 rounded-full bg-rose-500/10 border border-rose-500/20">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Delete Cronjob</h3>
+                <p className="text-xs text-zinc-500">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
+              Are you sure you want to delete <strong className="text-zinc-900 dark:text-zinc-100 font-semibold">{job.name}</strong>? All associated execution logs and automated triggers will be permanently removed.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-900">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md border border-zinc-300 dark:border-zinc-800 transition-colors"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-md transition-all shadow-xs"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete Cronjob'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs Bar */}
       <div className="flex border-b border-zinc-200 dark:border-zinc-800 text-xs font-medium overflow-x-auto">

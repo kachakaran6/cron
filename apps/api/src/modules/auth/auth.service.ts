@@ -183,4 +183,72 @@ export class AuthService {
       organization: { id: org.id, name: org.name, slug: org.slug, planId: org.planId },
     };
   }
+
+  async oauthLogin(dto: {
+    provider: 'google' | 'github';
+    email: string;
+    name?: string;
+    providerId?: string;
+    image?: string;
+  }) {
+    const normalized = dto.email.toLowerCase().trim();
+    let [user] = await db.select().from(users).where(eq(users.email, normalized)).limit(1);
+
+    const role = normalized === 'kachakaran6@gmail.com' ? 'admin' : (user?.role || 'user');
+
+    if (!user) {
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          email: normalized,
+          name: dto.name || normalized.split('@')[0],
+          role,
+          provider: dto.provider,
+          providerId: dto.providerId || `oauth-${Date.now()}`,
+          emailVerified: true,
+          image: dto.image || null,
+        })
+        .returning();
+      user = newUser;
+    } else {
+      await db
+        .update(users)
+        .set({
+          provider: dto.provider,
+          providerId: dto.providerId || user.providerId,
+          role,
+          image: dto.image || user.image,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id));
+    }
+
+    let [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.ownerId, user.id))
+      .limit(1);
+
+    if (!org) {
+      const slug = normalized.split('@')[0].replace(/[^a-z0-9]/gi, '-').toLowerCase() + '-' + user.id.slice(0, 8);
+      const [newOrg] = await db
+        .insert(organizations)
+        .values({
+          name: `${user.name || 'Personal'}'s Organization`,
+          slug,
+          ownerId: user.id,
+          planId: role === 'admin' ? 'enterprise' : 'free',
+        })
+        .returning();
+      org = newOrg;
+    }
+
+    const token = this.signToken({ sub: user.id, email: user.email, orgId: org.id, role });
+
+    return {
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role, image: user.image },
+      organization: { id: org.id, name: org.name, slug: org.slug, planId: org.planId },
+    };
+  }
 }
