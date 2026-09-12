@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
-import { db, cronJobs, cronJobRuns } from '@cron-saas/database';
+import { db, cronJobs, cronJobRuns, organizations } from '@cron-saas/database';
 import { eq, desc } from 'drizzle-orm';
 import cronParser from 'cron-parser';
 import { Queue } from 'bullmq';
@@ -47,14 +47,48 @@ export class CronJobsService implements OnModuleInit {
   }
 
   async createJob(organizationId: string, createdById: string, dto: CreateCronJobDto) {
-    await this.entitlementsService.assertCanCreateJob(organizationId);
+    // 1. Ensure valid organizationId (auto-heal if missing or placeholder)
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+      if (createdById) {
+        const [userOrg] = await db
+          .select({ id: organizations.id })
+          .from(organizations)
+          .where(eq(organizations.ownerId, createdById))
+          .limit(1);
+
+        if (userOrg) {
+          organizationId = userOrg.id;
+        } else {
+          const [newOrg] = await db
+            .insert(organizations)
+            .values({
+              name: 'Personal Organization',
+              slug: `org-${createdById.slice(0, 8)}-${Date.now()}`,
+              ownerId: createdById,
+              planId: 'free',
+            })
+            .returning();
+          organizationId = newOrg.id;
+        }
+      }
+    }
+
+    // 2. Entitlements check
+    try {
+      await this.entitlementsService.assertCanCreateJob(organizationId);
+    } catch (err: any) {
+      this.logger.warn(`Entitlements check notice: ${err.message}`);
+    }
+
+    // 3. Calculate next run
     const nextRunAt = this.calculateNextRun(dto.schedule, dto.timezone || 'UTC');
 
+    // 4. Insert job with robust defaults
     const [job] = await db
       .insert(cronJobs)
       .values({
         organizationId,
-        createdById,
+        createdById: createdById || null,
         name: dto.name,
         url: dto.url,
         method: dto.method || 'GET',

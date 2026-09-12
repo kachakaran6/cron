@@ -33,27 +33,27 @@ export default function SchedulesListPage() {
   return (
     <div className="space-y-5">
       {/* Top Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-zinc-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-zinc-200 dark:border-zinc-800">
         <div>
-          <h1 className="text-lg font-semibold text-zinc-100">Schedules</h1>
-          <p className="text-xs text-zinc-400">Manage scheduled HTTP requests and monitor their execution.</p>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Schedules</h1>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">Manage scheduled HTTP requests and monitor their execution.</p>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-2.5" />
+            <Search className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 absolute left-2.5 top-2.5" />
             <input
               type="text"
               placeholder="Search schedules or URLs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-200 focus-ring w-60 placeholder-zinc-500"
+              className="pl-8 pr-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus-ring w-60 placeholder-zinc-400 dark:placeholder-zinc-500 shadow-xs"
             />
           </div>
 
           <button
             onClick={() => refetch()}
-            className="p-1.5 rounded border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-200 transition-colors"
+            className="p-2 rounded-md border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shadow-xs"
             title="Refresh"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -61,7 +61,7 @@ export default function SchedulesListPage() {
 
           <Link
             to="/dashboard/schedules/new"
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded bg-zinc-100 text-zinc-950 hover:bg-white transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-md btn-accent shadow-sm transition-all"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Create schedule</span>
@@ -70,25 +70,25 @@ export default function SchedulesListPage() {
       </div>
 
       {/* Main Data Table */}
-      <div className="border border-zinc-800 rounded bg-zinc-950 overflow-hidden">
+      <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none overflow-hidden">
         <table className="w-full text-left text-xs">
-          <thead className="bg-zinc-900/80 text-[11px] font-mono uppercase tracking-wider text-zinc-400 border-b border-zinc-800">
+          <thead className="bg-zinc-50 dark:bg-zinc-900/80 text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
             <tr>
-              <th className="px-4 py-2.5">Name</th>
-              <th className="px-4 py-2.5">Target</th>
-              <th className="px-4 py-2.5">Schedule</th>
-              <th className="px-4 py-2.5">Last execution</th>
-              <th className="px-4 py-2.5">Next execution</th>
-              <th className="px-4 py-2.5">Status</th>
-              <th className="px-4 py-2.5 text-right">Actions</th>
+              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">Target</th>
+              <th className="px-4 py-3">Schedule</th>
+              <th className="px-4 py-3">Last execution</th>
+              <th className="px-4 py-3">Next execution</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800/60 font-sans text-zinc-300">
+          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-sans text-zinc-700 dark:text-zinc-300">
             {isLoading && <TableSkeleton rows={5} cols={7} />}
 
             {!isLoading && isError && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-rose-400 text-xs">
+                <td colSpan={7} className="px-4 py-8 text-center text-rose-500 dark:text-rose-400 text-xs">
                   Failed to load schedules. Please click Refresh to try again.
                 </td>
               </tr>
@@ -96,7 +96,7 @@ export default function SchedulesListPage() {
 
             {!isLoading && !isError && filteredJobs?.length === 0 && (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={7} className="p-4">
                   <EmptyState
                     icon={Clock}
                     title="No scheduled requests"
@@ -111,29 +111,29 @@ export default function SchedulesListPage() {
             )}
 
             {!isLoading && filteredJobs?.map((job) => (
-              <tr key={job.id} className="hover:bg-zinc-900/50 transition-colors">
-                <td className="px-4 py-3 font-medium text-zinc-100">
-                  <Link to={`/dashboard/schedules/${job.id}`} className="hover:text-zinc-300">
+              <tr key={job.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
+                <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">
+                  <Link to={`/dashboard/schedules/${job.id}`} className="hover:underline">
                     {job.name}
                   </Link>
                 </td>
 
-                <td className="px-4 py-3 font-mono text-zinc-400 truncate max-w-xs">
-                  <span className="text-[10px] px-1 py-0.5 rounded bg-zinc-800 text-zinc-300 mr-1.5 font-sans uppercase">
+                <td className="px-4 py-3 font-mono text-zinc-600 dark:text-zinc-400 truncate max-w-xs">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700/50 mr-1.5 font-sans font-medium uppercase">
                     {job.method}
                   </span>
                   {job.url}
                 </td>
 
-                <td className="px-4 py-3 font-mono text-zinc-300">
+                <td className="px-4 py-3 font-mono text-zinc-800 dark:text-zinc-300">
                   {job.schedule}
                 </td>
 
-                <td className="px-4 py-3 font-mono text-zinc-400">
+                <td className="px-4 py-3 font-mono text-zinc-600 dark:text-zinc-400">
                   {job.lastRunAt ? new Date(job.lastRunAt).toLocaleTimeString() : '—'}
                 </td>
 
-                <td className="px-4 py-3 font-mono text-zinc-400">
+                <td className="px-4 py-3 font-mono text-zinc-600 dark:text-zinc-400">
                   {new Date(job.nextRunAt).toLocaleTimeString()}
                 </td>
 
@@ -147,13 +147,13 @@ export default function SchedulesListPage() {
                       onClick={() => triggerMutation.mutate(job.id)}
                       disabled={triggerMutation.isPending}
                       title="Run now"
-                      className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
+                      className="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                     >
                       <Play className="w-3.5 h-3.5" />
                     </button>
                     <Link
                       to={`/dashboard/schedules/${job.id}`}
-                      className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
+                      className="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                     >
                       <MoreVertical className="w-3.5 h-3.5" />
                     </Link>

@@ -32,9 +32,10 @@ export class EntitlementsService {
       .from(cronJobs)
       .where(eq(cronJobs.organizationId, organizationId));
 
-    if (jobCount.value >= caps.maxJobs) {
+    const currentCount = jobCount?.value ? Number(jobCount.value) : 0;
+    if (currentCount >= caps.maxJobs) {
       throw new ForbiddenException(
-        `Job limit reached for current tier (${jobCount.value}/${caps.maxJobs}). Contact support for higher limits.`
+        `Job limit reached for current tier (${currentCount}/${caps.maxJobs}). Contact support for higher limits.`
       );
     }
   }

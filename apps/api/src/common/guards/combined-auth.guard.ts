@@ -1,7 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import crypto from 'node:crypto';
 import * as jwt from 'jsonwebtoken';
-import { db, apiKeys } from '@cron-saas/database';
+import { db, apiKeys, organizations } from '@cron-saas/database';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -48,6 +48,32 @@ export class CombinedAuthGuard implements CanActivate {
         req.userEmail = payload.email;
         req.organizationId = payload.orgId;
         req.authType = 'JWT';
+
+        // Auto-heal missing or dummy orgId
+        if (!req.organizationId || req.organizationId === '00000000-0000-0000-0000-000000000000') {
+          const [userOrg] = await db
+            .select({ id: organizations.id })
+            .from(organizations)
+            .where(eq(organizations.ownerId, req.userId))
+            .limit(1);
+
+          if (userOrg) {
+            req.organizationId = userOrg.id;
+          } else {
+            const slug = (req.userEmail?.split('@')[0] || 'org').replace(/[^a-z0-9]/gi, '-').toLowerCase() + '-' + req.userId.slice(0, 8);
+            const [newOrg] = await db
+              .insert(organizations)
+              .values({
+                name: `${req.userEmail?.split('@')[0] || 'Personal'}'s Organization`,
+                slug,
+                ownerId: req.userId,
+                planId: 'free',
+              })
+              .returning();
+            req.organizationId = newOrg.id;
+          }
+        }
+
         return true;
       } catch {
         // Invalid JWT — fall through

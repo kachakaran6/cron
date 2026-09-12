@@ -104,20 +104,33 @@ export class AuthService {
     }
 
     // Find user's organization
-    const [org] = await db
+    let [org] = await db
       .select()
       .from(organizations)
       .where(eq(organizations.ownerId, user.id))
       .limit(1);
 
-    const orgId = org?.id || '00000000-0000-0000-0000-000000000000';
+    if (!org) {
+      // Auto-create personal organization if user registered before orgs table existed
+      const slug = normalized.split('@')[0].replace(/[^a-z0-9]/gi, '-').toLowerCase() + '-' + user.id.slice(0, 8);
+      const [newOrg] = await db
+        .insert(organizations)
+        .values({
+          name: `${user.name || 'Personal'}'s Organization`,
+          slug,
+          ownerId: user.id,
+          planId: 'free',
+        })
+        .returning();
+      org = newOrg;
+    }
 
-    const token = this.signToken({ sub: user.id, email: user.email, orgId });
+    const token = this.signToken({ sub: user.id, email: user.email, orgId: org.id });
 
     return {
       token,
       user: { id: user.id, email: user.email, name: user.name },
-      organization: org ? { id: org.id, name: org.name, slug: org.slug } : null,
+      organization: { id: org.id, name: org.name, slug: org.slug },
     };
   }
 
@@ -130,15 +143,29 @@ export class AuthService {
 
     if (!user) throw new UnauthorizedException('User not found');
 
-    const [org] = await db
+    let [org] = await db
       .select()
       .from(organizations)
       .where(eq(organizations.ownerId, userId))
       .limit(1);
 
+    if (!org) {
+      const slug = (user.name || 'org').replace(/[^a-z0-9]/gi, '-').toLowerCase() + '-' + userId.slice(0, 8);
+      const [newOrg] = await db
+        .insert(organizations)
+        .values({
+          name: `${user.name || 'Personal'}'s Organization`,
+          slug,
+          ownerId: userId,
+          planId: 'free',
+        })
+        .returning();
+      org = newOrg;
+    }
+
     return {
       user,
-      organization: org ? { id: org.id, name: org.name, slug: org.slug, planId: org.planId } : null,
+      organization: { id: org.id, name: org.name, slug: org.slug, planId: org.planId },
     };
   }
 }

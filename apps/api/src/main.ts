@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { client } from '@cron-saas/database';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 /**
  * Idempotent startup schema bootstrap.
@@ -25,8 +26,10 @@ async function runStartupMigrations(logger: Logger) {
         updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `;
-    // Add password_hash if table existed without it (idempotent)
     await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`;
+    await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false`;
+    await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS image TEXT`;
+    await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
 
     // ── 2. organizations ─────────────────────────────────────────────────────
     await client`
@@ -40,6 +43,11 @@ async function runStartupMigrations(logger: Logger) {
         updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `;
+    await client`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS name VARCHAR(255)`;
+    await client`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS slug VARCHAR(255)`;
+    await client`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS owner_id UUID`;
+    await client`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS plan_id VARCHAR(64) NOT NULL DEFAULT 'free'`;
+    await client`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
 
     // ── 3. cron_jobs ─────────────────────────────────────────────────────────
     await client`
@@ -64,6 +72,23 @@ async function runStartupMigrations(logger: Logger) {
         updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS organization_id UUID`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS created_by_id UUID`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS name VARCHAR(255)`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS url TEXT`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS method VARCHAR(16) NOT NULL DEFAULT 'GET'`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS schedule VARCHAR(128)`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS timezone VARCHAR(64) NOT NULL DEFAULT 'UTC'`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS headers JSONB NOT NULL DEFAULT '{}'`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS body TEXT`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS timeout_ms INTEGER NOT NULL DEFAULT 10000`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 3`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS retry_delay_ms INTEGER NOT NULL DEFAULT 5000`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT true`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS next_run_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS last_run_at TIMESTAMPTZ`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
     await client`CREATE INDEX IF NOT EXISTS cron_jobs_org_idx ON cron_jobs (organization_id)`;
     await client`CREATE INDEX IF NOT EXISTS cron_jobs_next_run_idx ON cron_jobs (enabled, next_run_at)`;
 
@@ -86,6 +111,18 @@ async function runStartupMigrations(logger: Logger) {
         created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS cron_job_id UUID`;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ`;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS finished_at TIMESTAMPTZ`;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS duration_ms INTEGER`;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS status VARCHAR(32)`;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS http_status INTEGER`;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS response_size INTEGER DEFAULT 0`;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS response_headers TEXT`;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS response_body TEXT`;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS error_message TEXT`;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS attempt_number INTEGER NOT NULL DEFAULT 1`;
+    await client`ALTER TABLE cron_job_runs ADD COLUMN IF NOT EXISTS worker_id VARCHAR(64)`;
     await client`CREATE INDEX IF NOT EXISTS cron_job_runs_job_id_idx ON cron_job_runs (cron_job_id, created_at)`;
 
     // ── 5. api_keys ──────────────────────────────────────────────────────────
@@ -102,10 +139,17 @@ async function runStartupMigrations(logger: Logger) {
         created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `;
+    await client`ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS organization_id UUID`;
+    await client`ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS created_by_id UUID`;
+    await client`ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS name VARCHAR(128)`;
+    await client`ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS key_prefix VARCHAR(12)`;
+    await client`ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS hashed_key VARCHAR(128)`;
+    await client`ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ`;
+    await client`ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`;
     await client`CREATE INDEX IF NOT EXISTS api_keys_prefix_idx ON api_keys (key_prefix)`;
     await client`CREATE INDEX IF NOT EXISTS api_keys_org_idx ON api_keys (organization_id)`;
 
-    // ── 6. notification_channels (optional) ──────────────────────────────────
+    // ── 6. notification_channels ─────────────────────────────────────────────
     await client`
       CREATE TABLE IF NOT EXISTS notification_channels (
         id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -118,10 +162,23 @@ async function runStartupMigrations(logger: Logger) {
       )
     `;
 
-    logger.log('✓ Startup schema bootstrap complete — all tables ready');
+    // ── 7. entitlements ──────────────────────────────────────────────────────
+    await client`
+      CREATE TABLE IF NOT EXISTS entitlements (
+        id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        organization_id        UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE UNIQUE,
+        max_jobs               INTEGER NOT NULL DEFAULT 500,
+        min_interval_seconds   INTEGER NOT NULL DEFAULT 60,
+        history_retention_days INTEGER NOT NULL DEFAULT 30,
+        custom_headers         BOOLEAN NOT NULL DEFAULT true,
+        webhook_alerts         BOOLEAN NOT NULL DEFAULT true,
+        updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+
+    logger.log('✓ Startup schema bootstrap complete — all tables & columns verified');
   } catch (err: any) {
-    logger.error(`✗ Startup migration failed: ${err.message}`);
-    // In production, log the error but don't crash — let the API start and fail gracefully per-request
+    logger.error(`✗ Startup migration error: ${err.message}`);
   }
 }
 
@@ -136,6 +193,9 @@ async function bootstrap() {
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true,
   });
+
+  // Global exception filter for clear error logging and formatted responses
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   app.useGlobalPipes(
     new ValidationPipe({
