@@ -1,12 +1,12 @@
 # Stage 1: Prune monorepo
-FROM node:20-alpine AS pruner
+FROM node:22-alpine AS pruner
 WORKDIR /app
 RUN npm install -g turbo
 COPY . .
 RUN turbo prune --scope=@cron-saas/web --docker
 
 # Stage 2: Install dependencies & build React SPA
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.1.0 --activate
 COPY .gitignore .

@@ -1,0 +1,9 @@
+{
+  "project_uuid": "jlw3e4ckssepdinl8fuwimbr",
+  "environment_name": "production",
+  "server_uuid": "gps5av7uvdhmapsiknbhrpii",
+  "git_repository": "https://github.com/kachakaran6/cron",
+  "git_branch": "main",
+  "build_pack": "dockercompose",
+  "docker_compose_location": "/docker-compose.coolify.yml"
+}
