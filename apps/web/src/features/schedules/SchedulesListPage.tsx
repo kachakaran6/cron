@@ -11,12 +11,22 @@ export default function SchedulesListPage() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [jobToDelete, setJobToDelete] = useState<any>(null);
 
   useEffect(() => {
-    const handleOutsideClick = () => setOpenMenuId(null);
-    window.addEventListener('click', handleOutsideClick);
-    return () => window.removeEventListener('click', handleOutsideClick);
+    const handleClose = () => {
+      setOpenMenuId(null);
+      setMenuPos(null);
+    };
+    window.addEventListener('click', handleClose);
+    window.addEventListener('scroll', handleClose, true);
+    window.addEventListener('resize', handleClose);
+    return () => {
+      window.removeEventListener('click', handleClose);
+      window.removeEventListener('scroll', handleClose, true);
+      window.removeEventListener('resize', handleClose);
+    };
   }, []);
 
   const { data: jobs, isLoading, isError, refetch } = useQuery({
@@ -129,15 +139,14 @@ export default function SchedulesListPage() {
                   </td>
                 </tr>
               ) : (
-                filteredJobs.map((job, idx) => {
-                  const isNearBottom = filteredJobs.length > 3 && idx >= filteredJobs.length - 2;
+                filteredJobs.map((job) => {
                   const lastRun = job.logs?.[0] || job.executionLogs?.[0];
 
                   return (
                     <tr
                       key={job.id}
                       className={`hover:bg-zinc-50/80 dark:hover:bg-zinc-900/40 transition-colors ${
-                        openMenuId === job.id ? 'z-30 relative bg-zinc-50 dark:bg-zinc-900/60' : ''
+                        openMenuId === job.id ? 'bg-zinc-50 dark:bg-zinc-900/60' : ''
                       }`}
                     >
                       <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">
@@ -199,77 +208,104 @@ export default function SchedulesListPage() {
                             <Edit3 className="w-3.5 h-3.5" />
                           </Link>
 
-                          <div className="relative inline-block text-left">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenMenuId(openMenuId === job.id ? null : job.id);
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (openMenuId === job.id) {
+                                setOpenMenuId(null);
+                                setMenuPos(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const dropdownHeight = 175;
+                                const spaceBelow = window.innerHeight - rect.bottom;
+                                let top = rect.bottom + 4;
+                                if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+                                  top = rect.top - dropdownHeight - 4;
+                                }
+                                setMenuPos({
+                                  top,
+                                  right: Math.max(16, window.innerWidth - rect.right),
+                                });
+                                setOpenMenuId(job.id);
+                              }
+                            }}
+                            title="More options"
+                            className={`p-1.5 rounded transition-colors ${
+                              openMenuId === job.id
+                                ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100'
+                                : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                            }`}
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Floating Fixed Position Dropdown Menu */}
+                          {openMenuId === job.id && menuPos && (
+                            <div
+                              style={{
+                                position: 'fixed',
+                                top: `${menuPos.top}px`,
+                                right: `${menuPos.right}px`,
+                                zIndex: 9999,
                               }}
-                              title="More options"
-                              className={`p-1.5 rounded transition-colors ${
-                                openMenuId === job.id
-                                  ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100'
-                                  : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-                              }`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-48 rounded-lg shadow-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 py-1.5 text-xs text-left animate-in fade-in zoom-in-95 duration-100"
                             >
-                              <MoreVertical className="w-3.5 h-3.5" />
-                            </button>
-
-                            {openMenuId === job.id && (
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                className={`absolute right-0 w-48 rounded-lg shadow-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100 ${
-                                  isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
-                                }`}
+                              <Link
+                                to={`/dashboard/schedules/${job.id}`}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setMenuPos(null);
+                                }}
+                                className="flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                               >
-                                <Link
-                                  to={`/dashboard/schedules/${job.id}`}
-                                  onClick={() => setOpenMenuId(null)}
-                                  className="flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                                >
-                                  <Eye className="w-3.5 h-3.5 text-zinc-500" />
-                                  <span>View details</span>
-                                </Link>
+                                <Eye className="w-3.5 h-3.5 text-zinc-500" />
+                                <span>View details</span>
+                              </Link>
 
-                                <Link
-                                  to={`/dashboard/schedules/${job.id}/edit`}
-                                  onClick={() => setOpenMenuId(null)}
-                                  className="flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors font-medium"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-zinc-500" />
-                                  <span>Edit cronjob</span>
-                                </Link>
+                              <Link
+                                to={`/dashboard/schedules/${job.id}/edit`}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setMenuPos(null);
+                                }}
+                                className="flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors font-medium"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-zinc-500" />
+                                <span>Edit cronjob</span>
+                              </Link>
 
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    triggerMutation.mutate(job.id);
-                                    setOpenMenuId(null);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-left"
-                                >
-                                  <Play className="w-3.5 h-3.5 text-zinc-500" />
-                                  <span>Run now</span>
-                                </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  triggerMutation.mutate(job.id);
+                                  setOpenMenuId(null);
+                                  setMenuPos(null);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-left"
+                              >
+                                <Play className="w-3.5 h-3.5 text-zinc-500" />
+                                <span>Run now</span>
+                              </button>
 
-                                <div className="my-1 border-t border-zinc-200 dark:border-zinc-800" />
+                              <div className="my-1 border-t border-zinc-200 dark:border-zinc-800" />
 
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenMenuId(null);
-                                    setJobToDelete(job);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left font-semibold"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Delete cronjob</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuId(null);
+                                  setMenuPos(null);
+                                  setJobToDelete(job);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left font-semibold"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete cronjob</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
