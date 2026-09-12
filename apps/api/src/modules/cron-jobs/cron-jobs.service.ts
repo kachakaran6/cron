@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
 import { db, cronJobs, cronJobRuns, organizations } from '@cron-saas/database';
 import { eq, desc } from 'drizzle-orm';
-import cronParser from 'cron-parser';
+import * as cronParser from 'cron-parser';
 import { Queue } from 'bullmq';
 import { CreateCronJobDto } from './dto/create-cron-job.dto';
 import { EntitlementsService } from '../entitlements/entitlements.service';
@@ -39,11 +39,21 @@ export class CronJobsService implements OnModuleInit {
   }
 
   private calculateNextRun(schedule: string, timezone = 'UTC'): Date {
-    const interval = cronParser.parseExpression(schedule, {
-      currentDate: new Date(),
-      tz: timezone,
-    });
-    return interval.next().toDate();
+    try {
+      const parseFn =
+        (cronParser as any).parseExpression ||
+        (cronParser as any).default?.parseExpression ||
+        (cronParser as any);
+
+      const interval = parseFn(schedule, {
+        currentDate: new Date(),
+        tz: timezone || 'UTC',
+      });
+      return interval.next().toDate();
+    } catch (err: any) {
+      this.logger.warn(`Failed to parse cron expression "${schedule}": ${err.message}. Using fallback +5m.`);
+      return new Date(Date.now() + 5 * 60 * 1000);
+    }
   }
 
   async createJob(organizationId: string, createdById: string, dto: CreateCronJobDto) {
