@@ -314,3 +314,15 @@ export async function updateAdminConfig(config: any): Promise<any> {
     body: JSON.stringify(config),
   });
 }
+
+export async function clearAdminLogs(): Promise<{ success: boolean; message: string }> {
+  return request(`${API_BASE}/admin/logs/clear`, {
+    method: 'POST',
+  });
+}
+
+export async function deleteAdminUser(userId: string): Promise<{ success: boolean; message: string }> {
+  return request(`${API_BASE}/admin/users/${userId}`, {
+    method: 'DELETE',
+  });
+}

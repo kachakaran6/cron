@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiSecurity, ApiQuery } from '@nestjs/swagger';
 import { CombinedAuthGuard } from '../../common/guards/combined-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
@@ -37,6 +37,12 @@ export class AdminController {
     });
   }
 
+  @Post('logs/clear')
+  @ApiOperation({ summary: 'Truncate log files' })
+  async clearLogs() {
+    return this.adminService.clearLogs();
+  }
+
   @Get('users')
   @ApiOperation({ summary: 'List all registered users and their resource consumption' })
   async getUsers() {
@@ -53,6 +59,12 @@ export class AdminController {
   @ApiOperation({ summary: 'Update user organization plan' })
   async updateUserPlan(@Param('id') id: string, @Body() body: { planId: string }) {
     return this.adminService.updateUserPlan(id, body.planId);
+  }
+
+  @Delete('users/:id')
+  @ApiOperation({ summary: 'Delete user and purge all associated resources' })
+  async deleteUser(@Param('id') id: string) {
+    return this.adminService.deleteUser(id);
   }
 
   @Get('config')

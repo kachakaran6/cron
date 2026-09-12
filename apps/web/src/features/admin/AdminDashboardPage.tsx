@@ -22,6 +22,14 @@ import {
   HardDrive,
   Copy,
   Check,
+  Trash2,
+  Clock,
+  AlertOctagon,
+  FileText,
+  BarChart3,
+  Globe,
+  Bell,
+  Key,
 } from 'lucide-react';
 import {
   fetchAdminStats,
@@ -31,6 +39,8 @@ import {
   updateAdminUserPlan,
   fetchAdminConfig,
   updateAdminConfig,
+  clearAdminLogs,
+  deleteAdminUser,
 } from '../../services/api';
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { CodeBlock } from '../../components/ui/CodeBlock';
@@ -43,9 +53,11 @@ export default function AdminDashboardPage() {
   const [logLevel, setLogLevel] = useState<string>('ALL');
   const [logSearch, setLogSearch] = useState<string>('');
   const [expandedLogIndex, setExpandedLogIndex] = useState<number | null>(null);
+  const [logClearSuccess, setLogClearSuccess] = useState<string | null>(null);
 
   // User filter state
   const [userSearch, setUserSearch] = useState<string>('');
+  const [userToDelete, setUserToDelete] = useState<any | null>(null);
 
   // Queries
   const { data: stats, isLoading: isStatsLoading, refetch: refetchStats } = useQuery({
@@ -99,7 +111,38 @@ export default function AdminDashboardPage() {
     mutationFn: updateAdminConfig,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-config'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       alert('System runtime configuration updated successfully!');
+    },
+  });
+
+  const clearLogsMutation = useMutation({
+    mutationFn: clearAdminLogs,
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-logs'] });
+      setLogClearSuccess(res.message);
+      setTimeout(() => setLogClearSuccess(null), 4000);
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => deleteAdminUser(userId),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      setUserToDelete(null);
+      alert(res.message);
+    },
+    onError: (err: any) => {
+      alert(`Error deleting user: ${err.message}`);
+    },
+  });
+
+  const toggleMaintenanceMutation = useMutation({
+    mutationFn: (currentMode: boolean) => updateAdminConfig({ maintenanceMode: !currentMode }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-config'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
     },
   });
 
@@ -121,13 +164,31 @@ export default function AdminDashboardPage() {
               <Shield className="w-3 h-3" />
               SYSTEM ADMIN
             </span>
+            {stats?.overview?.maintenanceMode && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 animate-pulse">
+                <AlertOctagon className="w-3 h-3" />
+                MAINTENANCE MODE
+              </span>
+            )}
           </div>
           <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
-            Real-time diagnostics, file log stream, user consumption, role promotion, and engine runtime configuration.
+            Full system control: database row analytics, HTTP status telemetry, log truncation, maintenance controls & user deletion.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => toggleMaintenanceMutation.mutate(!!stats?.overview?.maintenanceMode)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors shadow-xs ${
+              stats?.overview?.maintenanceMode
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500/20'
+            }`}
+          >
+            <AlertOctagon className="w-3.5 h-3.5" />
+            <span>{stats?.overview?.maintenanceMode ? 'Disable Maintenance' : 'Enable Maintenance Mode'}</span>
+          </button>
+
           <button
             onClick={() => {
               refetchStats();
@@ -154,7 +215,7 @@ export default function AdminDashboardPage() {
           }`}
         >
           <Activity className="w-4 h-4" />
-          <span>Overview & Metrics</span>
+          <span>Overview & Deep Telemetry</span>
         </button>
 
         <button
@@ -183,7 +244,7 @@ export default function AdminDashboardPage() {
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>User Directory & Roles</span>
+          <span>User Management & Danger Zone</span>
           {usersData?.length ? (
             <span className="ml-1 px-1.5 py-0.2 rounded-full bg-zinc-200 dark:bg-zinc-800 text-[10px] font-mono">
               {usersData.length}
@@ -258,6 +319,127 @@ export default function AdminDashboardPage() {
                 <span className="text-xs font-normal text-zinc-500 ml-1">ms</span>
               </div>
               <p className="text-[11px] text-zinc-500 mt-1">Worker HTTP execution time</p>
+            </div>
+          </div>
+
+          {/* Database Table Storage Row Telemetry */}
+          <div className="p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <Database className="w-4 h-4 text-emerald-500" />
+                <span>Database Table Row Telemetry</span>
+              </h3>
+              <span className="text-xs text-zinc-500 font-mono">Drizzle ORM Engine</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+              <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-1">
+                  <Users className="w-3 h-3 text-blue-500" /> users
+                </div>
+                <div className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5">
+                  {stats?.tableCounts?.users ?? 0}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-1">
+                  <Server className="w-3 h-3 text-purple-500" /> organizations
+                </div>
+                <div className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5">
+                  {stats?.tableCounts?.organizations ?? 0}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-amber-500" /> cron_jobs
+                </div>
+                <div className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5">
+                  {stats?.tableCounts?.cronJobs ?? 0}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-emerald-500" /> cron_job_runs
+                </div>
+                <div className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5">
+                  {stats?.tableCounts?.cronJobRuns ?? 0}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-1">
+                  <Globe className="w-3 h-3 text-indigo-500" /> status_pages
+                </div>
+                <div className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5">
+                  {stats?.tableCounts?.statusPages ?? 0}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-1">
+                  <Key className="w-3 h-3 text-cyan-500" /> api_keys
+                </div>
+                <div className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5">
+                  {stats?.tableCounts?.apiKeys ?? 0}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-1">
+                  <Bell className="w-3 h-3 text-rose-500" /> channels
+                </div>
+                <div className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5">
+                  {stats?.tableCounts?.notificationChannels ?? 0}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* HTTP Status Code Distribution */}
+          <div className="p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-sky-500" />
+                <span>HTTP Response Status Distribution</span>
+              </h3>
+              <span className="text-xs text-zinc-500">Live Worker Log Aggregation</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                <div className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">2xx SUCCESS</div>
+                <div className="text-2xl font-bold font-mono text-emerald-700 dark:text-emerald-300 mt-1">
+                  {stats?.statusDistribution?.code2xx ?? 0}
+                </div>
+                <div className="text-[10px] text-emerald-600/80 mt-0.5">200 OK / 201 Created</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
+                <div className="text-xs font-mono text-blue-600 dark:text-blue-400 font-bold">3xx REDIRECT</div>
+                <div className="text-2xl font-bold font-mono text-blue-700 dark:text-blue-300 mt-1">
+                  {stats?.statusDistribution?.code3xx ?? 0}
+                </div>
+                <div className="text-[10px] text-blue-600/80 mt-0.5">301 / 302 Redirects</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                <div className="text-xs font-mono text-amber-600 dark:text-amber-400 font-bold">4xx CLIENT ERR</div>
+                <div className="text-2xl font-bold font-mono text-amber-700 dark:text-amber-300 mt-1">
+                  {stats?.statusDistribution?.code4xx ?? 0}
+                </div>
+                <div className="text-[10px] text-amber-600/80 mt-0.5">400 Bad Req / 404 Not Found</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/20">
+                <div className="text-xs font-mono text-rose-600 dark:text-rose-400 font-bold">5xx / TIMEOUT</div>
+                <div className="text-2xl font-bold font-mono text-rose-700 dark:text-rose-300 mt-1">
+                  {stats?.statusDistribution?.code5xx ?? 0}
+                </div>
+                <div className="text-[10px] text-rose-600/80 mt-0.5">500 Server Err / Timeout</div>
+              </div>
             </div>
           </div>
 
@@ -381,6 +563,52 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Top Slowest Endpoints Table */}
+          <div className="p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <span>Top 5 Slowest Target Endpoints</span>
+              </h3>
+              <span className="text-xs text-zinc-500">Target Response Bottlenecks</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-zinc-50 dark:bg-zinc-900/80 text-[11px] font-mono uppercase tracking-wider text-zinc-500 border-b border-zinc-200 dark:border-zinc-800">
+                  <tr>
+                    <th className="px-4 py-2.5">Schedule Name</th>
+                    <th className="px-4 py-2.5">Target Endpoint URL</th>
+                    <th className="px-4 py-2.5">Avg Latency</th>
+                    <th className="px-4 py-2.5 text-right">Executions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-mono">
+                  {!stats?.topSlowestJobs?.length ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-6 text-center text-zinc-500">
+                        No target endpoint latency data recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    stats.topSlowestJobs.map((j: any) => (
+                      <tr key={j.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40">
+                        <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">{j.name}</td>
+                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 max-w-md truncate">{j.url}</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 rounded font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            {j.avgLatencyMs} ms
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right text-zinc-500">{j.runCount} runs</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
@@ -406,17 +634,39 @@ export default function AdminDashboardPage() {
               ))}
             </div>
 
-            <div className="relative flex-1 sm:max-w-xs">
-              <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-2.5" />
-              <input
-                type="text"
-                placeholder="Search file log text, endpoints, stack traces..."
-                value={logSearch}
-                onChange={(e) => setLogSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-zinc-900 dark:text-zinc-100 focus-ring placeholder-zinc-400"
-              />
+            <div className="flex items-center gap-2 flex-1 sm:max-w-md justify-end">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search file log text, endpoints, stack traces..."
+                  value={logSearch}
+                  onChange={(e) => setLogSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-zinc-900 dark:text-zinc-100 focus-ring placeholder-zinc-400"
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  if (confirm('Are you sure you want to clear/truncate all application log files?')) {
+                    clearLogsMutation.mutate();
+                  }
+                }}
+                disabled={clearLogsMutation.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-rose-500/30 bg-rose-500/10 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition-colors shadow-xs shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{clearLogsMutation.isPending ? 'Truncating...' : 'Clear Log Files'}</span>
+              </button>
             </div>
           </div>
+
+          {logClearSuccess && (
+            <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{logClearSuccess}</span>
+            </div>
+          )}
 
           {/* Logs List Container */}
           <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-950 text-zinc-100 p-4 font-mono text-xs space-y-2 max-h-[600px] overflow-y-auto">
@@ -584,7 +834,7 @@ export default function AdminDashboardPage() {
                           {new Date(u.createdAt).toLocaleDateString()}
                         </td>
 
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right space-x-2">
                           <button
                             onClick={() => {
                               const newRole = u.role === 'admin' ? 'user' : 'admin';
@@ -598,20 +848,62 @@ export default function AdminDashboardPage() {
                                 roleMutation.mutate({ userId: u.id, role: newRole });
                               }
                             }}
-                            className={`px-3 py-1 text-xs rounded-md font-medium transition-colors border ${
+                            className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors border ${
                               u.role === 'admin'
                                 ? 'border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
                                 : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
                             }`}
                           >
-                            {u.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
+                            {u.role === 'admin' ? 'Demote' : 'Promote'}
                           </button>
+
+                          {u.email !== 'kachakaran6@gmail.com' && (
+                            <button
+                              onClick={() => setUserToDelete(u)}
+                              className="px-2.5 py-1 text-xs rounded-md font-medium border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Deletion Confirmation Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-950 border border-rose-500/30 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Delete User Account</h3>
+            </div>
+
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              Are you sure you want to permanently delete user <strong className="text-zinc-900 dark:text-zinc-100">{userToDelete.email}</strong>?
+              This will purge all associated organizations, scheduled jobs, execution run histories, status pages, and API keys. This action cannot be undone.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setUserToDelete(null)}
+                className="px-3 py-1.5 rounded-md border border-zinc-300 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteUserMutation.mutate(userToDelete.id)}
+                disabled={deleteUserMutation.isPending}
+                className="px-3 py-1.5 rounded-md bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors"
+              >
+                {deleteUserMutation.isPending ? 'Purging User...' : 'Permanently Delete'}
+              </button>
             </div>
           </div>
         </div>
@@ -670,7 +962,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
                   <label className="flex items-center gap-2 font-medium text-zinc-800 dark:text-zinc-200 cursor-pointer">
                     <input
                       type="checkbox"
@@ -680,9 +972,16 @@ export default function AdminDashboardPage() {
                     />
                     <span>Enforce SSRF Private IP Blocking</span>
                   </label>
-                  <p className="text-[11px] text-zinc-500 mt-0.5 ml-6">
-                    Prevents workers from calling internal IP ranges (10.0.0.0/8, 127.0.0.1, AWS metadata endpoints).
-                  </p>
+
+                  <label className="flex items-center gap-2 font-medium text-zinc-800 dark:text-zinc-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={configForm?.maintenanceMode === true}
+                      onChange={(e) => setConfigForm({ ...configForm, maintenanceMode: e.target.checked })}
+                      className="w-4 h-4 rounded text-rose-500"
+                    />
+                    <span className="text-rose-600 dark:text-rose-400 font-bold">System Global Maintenance Mode</span>
+                  </label>
                 </div>
 
                 <div className="flex justify-end pt-4">

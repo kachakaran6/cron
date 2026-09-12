@@ -1,7 +1,9 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { db, users, organizations, cronJobs, cronJobRuns, statusPages, apiKeys } from '@cron-saas/database';
-import { eq, sql, count, desc, gte } from 'drizzle-orm';
+import { db, users, organizations, cronJobs, cronJobRuns, statusPages, apiKeys, notificationChannels } from '@cron-saas/database';
+import { eq, sql, count, desc, gte, inArray } from 'drizzle-orm';
 import { FileLoggerService } from '../../common/logger/file-logger.service';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 export interface SystemRuntimeConfig {
   workerConcurrency: number;
@@ -10,6 +12,7 @@ export interface SystemRuntimeConfig {
   blockedRanges: string[];
   logRetentionDays: number;
   tlsAlertDaysBeforeExpiry: number;
+  maintenanceMode: boolean;
 }
 
 @Injectable()
@@ -24,21 +27,21 @@ export class AdminService {
     blockedRanges: ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8', '169.254.0.0/16'],
     logRetentionDays: 30,
     tlsAlertDaysBeforeExpiry: 30,
+    maintenanceMode: false,
   };
 
   constructor(private readonly fileLogger: FileLoggerService) {}
 
   async getStats() {
-    // 1. Total counts
+    // 1. Table Row Counts Telemetry
     const [userCountResult] = await db.select({ value: count() }).from(users);
     const [orgCountResult] = await db.select({ value: count() }).from(organizations);
     const [jobCountResult] = await db.select({ value: count() }).from(cronJobs);
-    const [activeJobsResult] = await db
-      .select({ value: count() })
-      .from(cronJobs)
-      .where(eq(cronJobs.enabled, true));
+    const [activeJobsResult] = await db.select({ value: count() }).from(cronJobs).where(eq(cronJobs.enabled, true));
+    const [runsCountResult] = await db.select({ value: count() }).from(cronJobRuns);
     const [statusPagesResult] = await db.select({ value: count() }).from(statusPages);
     const [apiKeysResult] = await db.select({ value: count() }).from(apiKeys);
+    const [notifChannelsResult] = await db.select({ value: count() }).from(notificationChannels);
 
     // 2. Execution metrics in last 24 hours
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -56,6 +59,27 @@ export class AdminService {
       .select({ value: count() })
       .from(cronJobRuns)
       .where(sql`${cronJobRuns.startedAt} >= ${twentyFourHoursAgo} AND ${cronJobRuns.status} != 'SUCCESS'`);
+
+    // HTTP Status Code breakdown
+    const [status2xx] = await db
+      .select({ value: count() })
+      .from(cronJobRuns)
+      .where(sql`${cronJobRuns.httpStatus} >= 200 AND ${cronJobRuns.httpStatus} < 300`);
+
+    const [status3xx] = await db
+      .select({ value: count() })
+      .from(cronJobRuns)
+      .where(sql`${cronJobRuns.httpStatus} >= 300 AND ${cronJobRuns.httpStatus} < 400`);
+
+    const [status4xx] = await db
+      .select({ value: count() })
+      .from(cronJobRuns)
+      .where(sql`${cronJobRuns.httpStatus} >= 400 AND ${cronJobRuns.httpStatus} < 500`);
+
+    const [status5xx] = await db
+      .select({ value: count() })
+      .from(cronJobRuns)
+      .where(sql`${cronJobRuns.httpStatus} >= 500 OR ${cronJobRuns.httpStatus} IS NULL`);
 
     // Average latency
     const [avgLatencyResult] = await db
@@ -88,12 +112,26 @@ export class AdminService {
       });
     }
 
+    // Top 5 Slowest Target Jobs
+    const slowestJobs = await db
+      .select({
+        id: cronJobs.id,
+        name: cronJobs.name,
+        url: cronJobs.url,
+        avgLatencyMs: sql<number>`COALESCE(AVG(${cronJobRuns.durationMs}), 0)`,
+        runCount: count(cronJobRuns.id),
+      })
+      .from(cronJobs)
+      .leftJoin(cronJobRuns, eq(cronJobs.id, cronJobRuns.cronJobId))
+      .groupBy(cronJobs.id, cronJobs.name, cronJobs.url)
+      .orderBy(desc(sql`COALESCE(AVG(${cronJobRuns.durationMs}), 0)`))
+      .limit(5);
+
     const total24h = Number(runs24hResult?.value || 0);
     const success24h = Number(success24hResult?.value || 0);
     const failed24h = Number(failed24hResult?.value || 0);
     const successRate = total24h > 0 ? Number(((success24h / total24h) * 100).toFixed(1)) : 100;
 
-    // Node process memory info
     const memory = process.memoryUsage();
 
     return {
@@ -104,6 +142,16 @@ export class AdminService {
         activeCronJobs: Number(activeJobsResult?.value || 0),
         totalStatusPages: Number(statusPagesResult?.value || 0),
         totalApiKeys: Number(apiKeysResult?.value || 0),
+        maintenanceMode: this.runtimeConfig.maintenanceMode,
+      },
+      tableCounts: {
+        users: Number(userCountResult?.value || 0),
+        organizations: Number(orgCountResult?.value || 0),
+        cronJobs: Number(jobCountResult?.value || 0),
+        cronJobRuns: Number(runsCountResult?.value || 0),
+        statusPages: Number(statusPagesResult?.value || 0),
+        apiKeys: Number(apiKeysResult?.value || 0),
+        notificationChannels: Number(notifChannelsResult?.value || 0),
       },
       executions24h: {
         totalRuns: total24h,
@@ -112,15 +160,22 @@ export class AdminService {
         successRatePercentage: successRate,
         averageLatencyMs: Math.round(Number(avgLatencyResult?.avg || 0)),
       },
+      statusDistribution: {
+        code2xx: Number(status2xx?.value || 0),
+        code3xx: Number(status3xx?.value || 0),
+        code4xx: Number(status4xx?.value || 0),
+        code5xx: Number(status5xx?.value || 0),
+      },
+      topSlowestJobs: slowestJobs.map((j) => ({
+        ...j,
+        avgLatencyMs: Math.round(Number(j.avgLatencyMs)),
+        runCount: Number(j.runCount),
+      })),
       charts: {
         hourlyThroughput,
-        statusBreakdown: [
-          { label: 'Success', count: success24h, color: '#10b981' },
-          { label: 'Failed / Error', count: failed24h, color: '#f43f5e' },
-        ],
       },
       systemHealth: {
-        status: 'HEALTHY',
+        status: this.runtimeConfig.maintenanceMode ? 'MAINTENANCE' : 'HEALTHY',
         uptimeSeconds: Math.round(process.uptime()),
         rssMemoryMb: Math.round(memory.rss / (1024 * 1024)),
         heapUsedMb: Math.round(memory.heapUsed / (1024 * 1024)),
@@ -134,6 +189,21 @@ export class AdminService {
     return this.fileLogger.queryLogs(options);
   }
 
+  async clearLogs() {
+    const logsDir = path.join(process.cwd(), 'logs');
+    const apiLogFile = path.join(logsDir, 'app-api.log');
+    const errorLogFile = path.join(logsDir, 'app-error.log');
+
+    try {
+      if (fs.existsSync(apiLogFile)) fs.writeFileSync(apiLogFile, '');
+      if (fs.existsSync(errorLogFile)) fs.writeFileSync(errorLogFile, '');
+      this.fileLogger.logInfo('Cleared all application file log files', 'ADMIN');
+      return { success: true, message: 'Application log files truncated successfully' };
+    } catch (err: any) {
+      return { success: false, message: `Failed to clear logs: ${err?.message}` };
+    }
+  }
+
   async getUsers() {
     const allUsers = await db
       .select({
@@ -141,6 +211,7 @@ export class AdminService {
         email: users.email,
         name: users.name,
         role: users.role,
+        provider: users.provider,
         createdAt: users.createdAt,
       })
       .from(users)
@@ -200,6 +271,33 @@ export class AdminService {
 
     this.fileLogger.logInfo(`Updated organization ${org.name} plan to ${planId}`, 'ADMIN', { targetUserId, planId });
     return updatedOrg;
+  }
+
+  async deleteUser(targetUserId: string) {
+    const [user] = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.email.toLowerCase() === 'kachakaran6@gmail.com') {
+      throw new NotFoundException('Cannot delete primary system developer admin account');
+    }
+
+    const orgs = await db.select().from(organizations).where(eq(organizations.ownerId, targetUserId));
+
+    for (const org of orgs) {
+      const jobs = await db.select().from(cronJobs).where(eq(cronJobs.organizationId, org.id));
+      for (const job of jobs) {
+        await db.delete(cronJobRuns).where(eq(cronJobRuns.cronJobId, job.id));
+      }
+      await db.delete(cronJobs).where(eq(cronJobs.organizationId, org.id));
+      await db.delete(apiKeys).where(eq(apiKeys.organizationId, org.id));
+      await db.delete(statusPages).where(eq(statusPages.organizationId, org.id));
+      await db.delete(notificationChannels).where(eq(notificationChannels.organizationId, org.id));
+      await db.delete(organizations).where(eq(organizations.id, org.id));
+    }
+
+    await db.delete(users).where(eq(users.id, targetUserId));
+    this.fileLogger.logInfo(`Deleted user account ${user.email} (${targetUserId})`, 'ADMIN');
+    return { success: true, message: `User ${user.email} deleted successfully` };
   }
 
   getConfig(): SystemRuntimeConfig {
