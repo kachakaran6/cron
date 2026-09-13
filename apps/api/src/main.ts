@@ -231,6 +231,13 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // Cloudflare analytics auto-injection suppression middleware
+  app.use((req: any, res: any, next: any) => {
+    res.setHeader('X-Cloudflare-Analytics', 'off');
+    res.setHeader('CF-Beacon', 'off');
+    next();
+  });
+
   // Global exception filter for clear error logging and formatted responses
   app.useGlobalFilters(new AllExceptionsFilter());
 

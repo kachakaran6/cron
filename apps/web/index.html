@@ -3,7 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="cloudflare-analytics" content="off" />
+    <meta name="cf-beacon" content="disabled" />
     
+    <!-- Robust Ad-Blocker & Cloudflare Analytics Error Interceptor -->
+    <script>
+      (function() {
+        window.__cfBeacon = window.__cfBeacon || { token: '' };
+        window.addEventListener('error', function(e) {
+          var target = e.target || e.srcElement;
+          if (target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK')) {
+            var src = target.src || target.href || '';
+            if (src.indexOf('cloudflareinsights') !== -1 || src.indexOf('beacon.min.js') !== -1) {
+              if (e.preventDefault) e.preventDefault();
+              if (e.stopPropagation) e.stopPropagation();
+              if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+              return true;
+            }
+          }
+        }, true);
+      })();
+    </script>
+
     <!-- Primary Metadata -->
     <title>Samast Cron — Reliable Scheduled HTTP Request Infrastructure</title>
     <meta name="title" content="Samast Cron — Reliable Scheduled HTTP Request Infrastructure" />
