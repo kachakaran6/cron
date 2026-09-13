@@ -39,4 +39,8 @@ export class CreateStatusPageDto {
   @IsOptional()
   @IsArray()
   incidents?: IncidentDto[];
+
+  @ApiPropertyOptional({ description: 'Pro configurable options (headers, payload, status code colors, health scores)' })
+  @IsOptional()
+  config?: any;
 }

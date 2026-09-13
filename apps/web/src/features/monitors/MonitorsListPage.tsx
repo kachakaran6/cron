@@ -14,6 +14,7 @@ import {
   Clock,
   Activity,
   X,
+  Sparkles,
 } from 'lucide-react';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import {
@@ -22,8 +23,10 @@ import {
   updateStatusPage,
   deleteStatusPage,
   fetchJobs,
+  fetchUserSubscription,
   StatusPageDTO,
   IncidentItem,
+  StatusPageConfig,
 } from '../../services/api';
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -44,11 +47,32 @@ export default function MonitorsListPage() {
   const [monitoredJobIds, setMonitoredJobIds] = useState<string[]>([]);
   const [incidents, setIncidents] = useState<IncidentItem[]>([]);
 
+  // Pro Configuration Form States
+  const [showHeaders, setShowHeaders] = useState(false);
+  const [showPayload, setShowPayload] = useState(false);
+  const [showResponseCodes, setShowResponseCodes] = useState(true);
+  const [showLatencyMetrics, setShowLatencyMetrics] = useState(true);
+  const [showServiceHealthScores, setShowServiceHealthScores] = useState(true);
+  const [showUptimeBarChart, setShowUptimeBarChart] = useState(true);
+  const [customColors, setCustomColors] = useState({
+    successColor: '#10b981',
+    redirectColor: '#3b82f6',
+    clientErrorColor: '#f59e0b',
+    serverErrorColor: '#ef4444',
+  });
+
   // Incident sub-form state
   const [showAddIncident, setShowAddIncident] = useState(false);
   const [incidentTitle, setIncidentTitle] = useState('');
   const [incidentStatus, setIncidentStatus] = useState<'INVESTIGATING' | 'IDENTIFIED' | 'MONITORING' | 'RESOLVED'>('INVESTIGATING');
   const [incidentMessage, setIncidentMessage] = useState('');
+
+  // User subscription query for Pro features check
+  const { data: sub } = useQuery({
+    queryKey: ['user-subscription'],
+    queryFn: fetchUserSubscription,
+  });
+  const isPro = sub?.isPro || sub?.plan === 'PRO' || sub?.plan === 'ANNUAL' || sub?.plan === 'ENTERPRISE';
 
   // Queries
   const { data: statusPages, isLoading, refetch } = useQuery({
@@ -94,6 +118,18 @@ export default function MonitorsListPage() {
     setLogoUrl('');
     setMonitoredJobIds([]);
     setIncidents([]);
+    setShowHeaders(false);
+    setShowPayload(false);
+    setShowResponseCodes(true);
+    setShowLatencyMetrics(true);
+    setShowServiceHealthScores(true);
+    setShowUptimeBarChart(true);
+    setCustomColors({
+      successColor: '#10b981',
+      redirectColor: '#3b82f6',
+      clientErrorColor: '#f59e0b',
+      serverErrorColor: '#ef4444',
+    });
     setShowAddIncident(false);
     setIncidentTitle('');
     setIncidentStatus('INVESTIGATING');
@@ -114,6 +150,18 @@ export default function MonitorsListPage() {
     setLogoUrl(page.logoUrl || '');
     setMonitoredJobIds(page.monitoredJobIds || []);
     setIncidents(page.incidents || []);
+    setShowHeaders(page.config?.showHeaders ?? false);
+    setShowPayload(page.config?.showPayload ?? false);
+    setShowResponseCodes(page.config?.showResponseCodes ?? true);
+    setShowLatencyMetrics(page.config?.showLatencyMetrics ?? true);
+    setShowServiceHealthScores(page.config?.showServiceHealthScores ?? true);
+    setShowUptimeBarChart(page.config?.showUptimeBarChart ?? true);
+    setCustomColors({
+      successColor: page.config?.customColors?.successColor || '#10b981',
+      redirectColor: page.config?.customColors?.redirectColor || '#3b82f6',
+      clientErrorColor: page.config?.customColors?.clientErrorColor || '#f59e0b',
+      serverErrorColor: page.config?.customColors?.serverErrorColor || '#ef4444',
+    });
     setIsCreating(false);
   };
 
@@ -128,6 +176,16 @@ export default function MonitorsListPage() {
     e.preventDefault();
     if (!title.trim()) return;
 
+    const configData: StatusPageConfig = {
+      showHeaders,
+      showPayload,
+      showResponseCodes,
+      showLatencyMetrics,
+      showServiceHealthScores,
+      showUptimeBarChart,
+      customColors,
+    };
+
     if (isCreating) {
       createMutation.mutate({
         title: title.trim(),
@@ -136,6 +194,7 @@ export default function MonitorsListPage() {
         logoUrl: logoUrl.trim() || undefined,
         monitoredJobIds,
         incidents,
+        config: configData,
       });
     } else if (editingPage) {
       updateMutation.mutate({
@@ -147,6 +206,7 @@ export default function MonitorsListPage() {
           logoUrl: logoUrl.trim() || undefined,
           monitoredJobIds,
           incidents,
+          config: configData,
         },
       });
     }
@@ -608,6 +668,203 @@ export default function MonitorsListPage() {
                 ) : (
                   <p className="text-xs text-zinc-500 italic">No scheduled jobs created yet.</p>
                 )}
+              </div>
+
+              {/* 5. ⭐ Pro Configurable Options */}
+              <div className="space-y-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-mono uppercase font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-500" /> Pro Configurable Options
+                    </h3>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                      isPro
+                        ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                        : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                    }`}>
+                      {isPro ? 'PRO UNLOCKED' : 'PRO EXCLUSIVE'}
+                    </span>
+                  </div>
+                  {!isPro && (
+                    <Link
+                      to="/#pricing"
+                      className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                    >
+                      Upgrade to Pro →
+                    </Link>
+                  )}
+                </div>
+
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Customize response headers, payload snippets, HTTP status code colors, and service health scores to identify which services are running better and which need attention.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {/* Option 1: Show Response Headers */}
+                  <label className="p-3 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/50 flex items-start gap-2.5 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={showHeaders}
+                      onChange={(e) => setShowHeaders(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Show HTTP Response Headers</div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Expose captured request/response headers on status items</div>
+                    </div>
+                  </label>
+
+                  {/* Option 2: Show Response Body Payload */}
+                  <label className="p-3 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/50 flex items-start gap-2.5 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={showPayload}
+                      onChange={(e) => setShowPayload(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Show Response Body Payload</div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Display payload snippets for quick diagnostic inspection</div>
+                    </div>
+                  </label>
+
+                  {/* Option 3: Show Exact HTTP Status Codes */}
+                  <label className="p-3 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/50 flex items-start gap-2.5 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={showResponseCodes}
+                      onChange={(e) => setShowResponseCodes(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Show Exact HTTP Status Codes</div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Display HTTP 200, 302, 404, 500 status badges</div>
+                    </div>
+                  </label>
+
+                  {/* Option 4: Service Health Scores & Service Ranking */}
+                  <label className="p-3 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/50 flex items-start gap-2.5 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={showServiceHealthScores}
+                      onChange={(e) => setShowServiceHealthScores(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Service Health Scores &amp; Ranking</div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Rank services (A+, A, B, F) to identify best vs lagging APIs</div>
+                    </div>
+                  </label>
+
+                  {/* Option 5: Latency Metrics Breakdown */}
+                  <label className="p-3 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/50 flex items-start gap-2.5 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={showLatencyMetrics}
+                      onChange={(e) => setShowLatencyMetrics(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Show Latency &amp; p95 Breakdown</div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Display average latency and 95th percentile metrics</div>
+                    </div>
+                  </label>
+
+                  {/* Option 6: Uptime Bar Chart */}
+                  <label className="p-3 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/50 flex items-start gap-2.5 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={showUptimeBarChart}
+                      onChange={(e) => setShowUptimeBarChart(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Interactive 30-Day Uptime Bars</div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Show daily health bar timeline for each monitor</div>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Custom Response Code Colors Section */}
+                <div className="p-3.5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 space-y-3">
+                  <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center justify-between">
+                    <span>Custom Status Code Theme Colors</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">2xx / 3xx / 4xx / 5xx Badges</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-mono text-zinc-600 dark:text-zinc-400 mb-1">2xx Success</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={customColors.successColor}
+                          onChange={(e) => setCustomColors({ ...customColors, successColor: e.target.value })}
+                          className="w-7 h-7 rounded border border-zinc-300 dark:border-zinc-700 cursor-pointer p-0 bg-transparent"
+                        />
+                        <input
+                          type="text"
+                          value={customColors.successColor}
+                          onChange={(e) => setCustomColors({ ...customColors, successColor: e.target.value })}
+                          className="w-full px-2 py-1 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-mono text-zinc-600 dark:text-zinc-400 mb-1">3xx Redirect</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={customColors.redirectColor}
+                          onChange={(e) => setCustomColors({ ...customColors, redirectColor: e.target.value })}
+                          className="w-7 h-7 rounded border border-zinc-300 dark:border-zinc-700 cursor-pointer p-0 bg-transparent"
+                        />
+                        <input
+                          type="text"
+                          value={customColors.redirectColor}
+                          onChange={(e) => setCustomColors({ ...customColors, redirectColor: e.target.value })}
+                          className="w-full px-2 py-1 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-mono text-zinc-600 dark:text-zinc-400 mb-1">4xx Client Error</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={customColors.clientErrorColor}
+                          onChange={(e) => setCustomColors({ ...customColors, clientErrorColor: e.target.value })}
+                          className="w-7 h-7 rounded border border-zinc-300 dark:border-zinc-700 cursor-pointer p-0 bg-transparent"
+                        />
+                        <input
+                          type="text"
+                          value={customColors.clientErrorColor}
+                          onChange={(e) => setCustomColors({ ...customColors, clientErrorColor: e.target.value })}
+                          className="w-full px-2 py-1 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-mono text-zinc-600 dark:text-zinc-400 mb-1">5xx Server Error</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={customColors.serverErrorColor}
+                          onChange={(e) => setCustomColors({ ...customColors, serverErrorColor: e.target.value })}
+                          className="w-7 h-7 rounded border border-zinc-300 dark:border-zinc-700 cursor-pointer p-0 bg-transparent"
+                        />
+                        <input
+                          type="text"
+                          value={customColors.serverErrorColor}
+                          onChange={(e) => setCustomColors({ ...customColors, serverErrorColor: e.target.value })}
+                          className="w-full px-2 py-1 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Modal Buttons */}

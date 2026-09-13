@@ -155,7 +155,7 @@ export default function PublicStatusPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-zinc-200 dark:border-zinc-800">
             <h3 className="text-xs font-mono uppercase font-semibold text-zinc-500 dark:text-zinc-400">
-              Monitored Systems &amp; Services
+              Monitored Systems &amp; Services Performance
             </h3>
             <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
               {monitors.length} Service{monitors.length === 1 ? '' : 's'}
@@ -168,63 +168,141 @@ export default function PublicStatusPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {monitors.map((monitor: any) => (
-                <div
-                  key={monitor.id}
-                  className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 shadow-xs space-y-3"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{monitor.name}</h4>
-                      <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
-                        {monitor.uptime} uptime over observed window
-                      </span>
+              {monitors.map((monitor: any) => {
+                const config = data.config || {};
+                const customColors = config.customColors || {};
+
+                return (
+                  <div
+                    key={monitor.id}
+                    className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 shadow-xs space-y-3"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          {config.showServiceHealthScores !== false && monitor.healthRank && (
+                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                              #{monitor.healthRank}
+                            </span>
+                          )}
+                          <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{monitor.name}</h4>
+
+                          {config.showServiceHealthScores !== false && monitor.healthGrade && (
+                            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                              monitor.healthGrade === 'A+' || monitor.healthGrade === 'A'
+                                ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                                : monitor.healthGrade === 'B'
+                                ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                                : 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+                            }`}>
+                              Grade: {monitor.healthGrade}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+                          <span>Uptime: <strong className="text-zinc-800 dark:text-zinc-200">{monitor.uptime}</strong></span>
+                          {config.showLatencyMetrics !== false && monitor.avgLatency && (
+                            <span>Avg Latency: <strong className="text-zinc-800 dark:text-zinc-200">{monitor.avgLatency}</strong></span>
+                          )}
+                          {config.showLatencyMetrics !== false && monitor.p95Latency && (
+                            <span>p95: <strong className="text-zinc-800 dark:text-zinc-200">{monitor.p95Latency}</strong></span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {config.showResponseCodes !== false && monitor.lastStatusCode && (
+                          <span
+                            className="px-2 py-0.5 rounded text-[11px] font-mono font-bold text-white shadow-2xs"
+                            style={{
+                              backgroundColor:
+                                monitor.lastStatusCode >= 200 && monitor.lastStatusCode < 300
+                                  ? customColors.successColor || '#10b981'
+                                  : monitor.lastStatusCode >= 300 && monitor.lastStatusCode < 400
+                                  ? customColors.redirectColor || '#3b82f6'
+                                  : monitor.lastStatusCode >= 400 && monitor.lastStatusCode < 500
+                                  ? customColors.clientErrorColor || '#f59e0b'
+                                  : customColors.serverErrorColor || '#ef4444',
+                            }}
+                          >
+                            HTTP {monitor.lastStatusCode}
+                          </span>
+                        )}
+
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded ${
+                            monitor.status === 'Operational'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                          }`}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                          {monitor.status}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded ${
-                          monitor.status === 'Operational'
-                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
-                        }`}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                        {monitor.status}
-                      </span>
-                    </div>
-                  </div>
+                    {/* Pro Options: Headers and Payload Details Viewers */}
+                    {(config.showHeaders || config.showPayload) && (
+                      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+                        {config.showHeaders && monitor.lastResponseHeaders && (
+                          <details className="text-xs font-mono group">
+                            <summary className="cursor-pointer text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 text-[11px] font-semibold">
+                              ▶ View Captured Response Headers
+                            </summary>
+                            <pre className="mt-1.5 p-3 rounded bg-zinc-950 text-zinc-200 overflow-x-auto text-[11px] whitespace-pre-wrap break-all border border-zinc-800">
+                              {monitor.lastResponseHeaders}
+                            </pre>
+                          </details>
+                        )}
 
-                  {/* Health Bars History Indicator */}
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1 h-6">
-                      {Array.from({ length: 30 }).map((_, i) => {
-                        const run = monitor.recentRuns?.[29 - i];
-                        const isSuccess = !run || run.status === 'SUCCESS';
-                        return (
-                          <div
-                            key={i}
-                            className={`flex-1 h-5 rounded-[2px] transition-all hover:scale-y-125 ${
-                              isSuccess
-                                ? 'bg-emerald-500 hover:bg-emerald-400'
-                                : 'bg-rose-500 hover:bg-rose-400'
-                            }`}
-                            title={
-                              run
-                                ? `${new Date(run.startedAt).toLocaleString()}: ${run.status} (${run.durationMs}ms)`
-                                : '100% Operational signal'
-                            }
-                          />
-                        );
-                      })}
-                    </div>
-                    <div className="flex justify-between text-[10px] font-mono text-zinc-400">
-                      <span>30 runs ago</span>
-                      <span>Today</span>
-                    </div>
+                        {config.showPayload && monitor.lastResponseBody && (
+                          <details className="text-xs font-mono group">
+                            <summary className="cursor-pointer text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 text-[11px] font-semibold">
+                              ▶ View Response Body Payload Snippet
+                            </summary>
+                            <pre className="mt-1.5 p-3 rounded bg-zinc-950 text-zinc-200 overflow-x-auto text-[11px] whitespace-pre-wrap break-all border border-zinc-800">
+                              {monitor.lastResponseBody}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Health Bars History Indicator */}
+                    {config.showUptimeBarChart !== false && (
+                      <div className="space-y-1 pt-1">
+                        <div className="flex items-center gap-1 h-6">
+                          {Array.from({ length: 30 }).map((_, i) => {
+                            const run = monitor.recentRuns?.[29 - i];
+                            const isSuccess = !run || run.status === 'SUCCESS';
+                            return (
+                              <div
+                                key={i}
+                                className={`flex-1 h-5 rounded-[2px] transition-all hover:scale-y-125 ${
+                                  isSuccess
+                                    ? 'bg-emerald-500 hover:bg-emerald-400'
+                                    : 'bg-rose-500 hover:bg-rose-400'
+                                }`}
+                                title={
+                                  run
+                                    ? `${new Date(run.startedAt).toLocaleString()}: ${run.status} (${run.durationMs}ms)`
+                                    : '100% Operational signal'
+                                }
+                              />
+                            );
+                          })}
+                        </div>
+                        <div className="flex justify-between text-[10px] font-mono text-zinc-400">
+                          <span>30 runs ago</span>
+                          <span>Today</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

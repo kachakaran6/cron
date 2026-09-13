@@ -10,6 +10,21 @@ export interface IncidentItem {
   message?: string;
 }
 
+export interface StatusPageConfig {
+  showHeaders?: boolean;
+  showPayload?: boolean;
+  showResponseCodes?: boolean;
+  showLatencyMetrics?: boolean;
+  showServiceHealthScores?: boolean;
+  showUptimeBarChart?: boolean;
+  customColors?: {
+    successColor?: string;
+    redirectColor?: string;
+    clientErrorColor?: string;
+    serverErrorColor?: string;
+  };
+}
+
 export const statusPages = pgTable('status_pages', {
   id: uuid('id').defaultRandom().primaryKey(),
   organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }).notNull(),
@@ -19,6 +34,7 @@ export const statusPages = pgTable('status_pages', {
   logoUrl: text('logo_url'),
   monitoredJobIds: jsonb('monitored_job_ids').$type<string[]>().default([]).notNull(),
   incidents: jsonb('incidents').$type<IncidentItem[]>().default([]).notNull(),
+  config: jsonb('config').$type<StatusPageConfig>().default({}).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => {

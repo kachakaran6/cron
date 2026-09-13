@@ -32,4 +32,8 @@ export class UpdateStatusPageDto {
   @IsOptional()
   @IsArray()
   incidents?: IncidentDto[];
+
+  @ApiPropertyOptional({ description: 'Pro configurable options' })
+  @IsOptional()
+  config?: any;
 }

@@ -179,6 +179,21 @@ export interface IncidentItem {
   message?: string;
 }
 
+export interface StatusPageConfig {
+  showHeaders?: boolean;
+  showPayload?: boolean;
+  showResponseCodes?: boolean;
+  showLatencyMetrics?: boolean;
+  showServiceHealthScores?: boolean;
+  showUptimeBarChart?: boolean;
+  customColors?: {
+    successColor?: string;
+    redirectColor?: string;
+    clientErrorColor?: string;
+    serverErrorColor?: string;
+  };
+}
+
 export interface StatusPageDTO {
   id: string;
   organizationId: string;
@@ -188,6 +203,7 @@ export interface StatusPageDTO {
   logoUrl?: string;
   monitoredJobIds: string[];
   incidents: IncidentItem[];
+  config?: StatusPageConfig;
   monitorCount?: number;
   activeIncidentsCount?: number;
   publicUrl?: string;
