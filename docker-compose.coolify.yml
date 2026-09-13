@@ -11,7 +11,7 @@ services:
     expose:
       - '80'
     labels:
-      - "caddy=http://cron.samast.pro, http://cron.3.110.164.62.sslip.io, http://3.110.164.62"
+      - "caddy=https://cron.samast.pro, http://cron.samast.pro, http://cron.3.110.164.62.sslip.io, http://3.110.164.62"
       - "caddy.reverse_proxy={{upstreams 80}}"
       - "caddy.networks=coolify"
     healthcheck:
