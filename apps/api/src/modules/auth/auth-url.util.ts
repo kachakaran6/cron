@@ -21,6 +21,14 @@ export function sanitizeUrl(url?: string | null): string | null {
   return trimmed;
 }
 
+export function ensureHttpsForProduction(url: string): string {
+  if (!url) return 'https://cron.samast.pro';
+  if (url.includes('localhost') || url.includes('127.0.0.1')) {
+    return url;
+  }
+  return url.replace(/^http:\/\//i, 'https://');
+}
+
 export function getFrontendUrl(req?: any, state?: string | null): string {
   // 1. If an explicit state was provided by the frontend (e.g. current origin)
   if (state) {
@@ -32,7 +40,7 @@ export function getFrontendUrl(req?: any, state?: string | null): string {
         cleanState.includes('localhost') ||
         cleanState.includes('127.0.0.1'))
     ) {
-      return cleanState;
+      return ensureHttpsForProduction(cleanState);
     }
   }
 
@@ -40,11 +48,10 @@ export function getFrontendUrl(req?: any, state?: string | null): string {
   if (req) {
     const rawHost = (req.headers?.['x-forwarded-host'] || req.headers?.host || '') as string;
     const host = rawHost.split(',')[0].trim().split(':')[0];
-    const proto = ((req.headers?.['x-forwarded-proto'] as string) || 'https').split(',')[0].trim();
 
     if (host && !host.includes('sslip.io') && !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
       if (host.includes('samast.pro')) {
-        return `${proto}://${host}`;
+        return `https://${host}`;
       }
       if (host.includes('localhost') || host.includes('127.0.0.1')) {
         return `http://${rawHost.split(',')[0].trim()}`;
@@ -55,16 +62,16 @@ export function getFrontendUrl(req?: any, state?: string | null): string {
   // 3. Check environment FRONTEND_URL if not an ephemeral domain
   const envFrontend = sanitizeUrl(process.env.FRONTEND_URL);
   if (envFrontend) {
-    return envFrontend;
+    return ensureHttpsForProduction(envFrontend);
   }
 
   // 4. Check environment APP_PUBLIC_URL if not an ephemeral domain
   const envPublic = sanitizeUrl(process.env.APP_PUBLIC_URL);
   if (envPublic) {
-    return envPublic;
+    return ensureHttpsForProduction(envPublic);
   }
 
-  // 5. Default production domain
+  // 5. Default production domain (strictly HTTPS)
   return 'https://cron.samast.pro';
 }
 
@@ -73,11 +80,10 @@ export function getPublicAppUrl(req?: any): string {
   if (req) {
     const rawHost = (req.headers?.['x-forwarded-host'] || req.headers?.host || '') as string;
     const host = rawHost.split(',')[0].trim().split(':')[0];
-    const proto = ((req.headers?.['x-forwarded-proto'] as string) || 'https').split(',')[0].trim();
 
     if (host && !host.includes('sslip.io') && !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
       if (host.includes('samast.pro')) {
-        return `${proto}://${host}`;
+        return `https://${host}`;
       }
       if (host.includes('localhost') || host.includes('127.0.0.1')) {
         return `http://${rawHost.split(',')[0].trim()}`;
@@ -88,16 +94,16 @@ export function getPublicAppUrl(req?: any): string {
   // 2. Check APP_PUBLIC_URL
   const envPublic = sanitizeUrl(process.env.APP_PUBLIC_URL);
   if (envPublic) {
-    return envPublic;
+    return ensureHttpsForProduction(envPublic);
   }
 
   // 3. Check FRONTEND_URL
   const envFrontend = sanitizeUrl(process.env.FRONTEND_URL);
   if (envFrontend) {
-    return envFrontend;
+    return ensureHttpsForProduction(envFrontend);
   }
 
-  // 4. Default production domain
+  // 4. Default production domain (strictly HTTPS)
   return 'https://cron.samast.pro';
 }
 

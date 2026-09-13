@@ -32,7 +32,10 @@ export default function LoginPage() {
   };
 
   const handleOAuth = (provider: 'google' | 'github') => {
-    const origin = window.location.origin;
+    let origin = window.location.origin;
+    if (origin.includes('samast.pro') && origin.startsWith('http://')) {
+      origin = origin.replace('http://', 'https://');
+    }
     window.location.href = `/api/v1/auth/${provider}?origin=${encodeURIComponent(origin)}`;
   };
 
