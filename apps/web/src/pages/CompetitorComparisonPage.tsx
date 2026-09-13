@@ -63,39 +63,39 @@ export function CompetitorComparisonPage() {
             <span>Developer Comparison Hub • 2026 Edition</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
             {info.title}
           </h1>
-          <p className="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
             {info.subtitle}
           </p>
         </div>
 
         {/* Feature Comparison Table */}
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 overflow-hidden shadow-2xl">
-          <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white">Feature &amp; Capability Matrix</h2>
-            <span className="text-xs text-zinc-400 font-mono">Updated September 2026</span>
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 overflow-hidden shadow-xl dark:shadow-2xl">
+          <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Feature &amp; Capability Matrix</h2>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">Updated September 2026</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-zinc-950/80 text-zinc-400 uppercase font-mono text-[11px] border-b border-zinc-800">
+              <thead className="bg-zinc-50 dark:bg-zinc-950/80 text-zinc-600 dark:text-zinc-400 uppercase font-mono text-[11px] border-b border-zinc-200 dark:border-zinc-800">
                 <tr>
                   <th className="py-4 px-6">Capability / Feature</th>
-                  <th className="py-4 px-6 text-emerald-400 font-bold bg-emerald-500/5">Samast Cron</th>
-                  <th className="py-4 px-6 text-zinc-400">{info.competitorName}</th>
+                  <th className="py-4 px-6 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/5">Samast Cron</th>
+                  <th className="py-4 px-6 text-zinc-600 dark:text-zinc-400">{info.competitorName}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800/60 font-medium">
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-medium">
                 {features.map((feat, idx) => (
-                  <tr key={idx} className="hover:bg-zinc-800/30 transition-colors">
-                    <td className="py-4 px-6 text-zinc-200 font-semibold">{feat.name}</td>
-                    <td className="py-4 px-6 text-emerald-400 font-bold bg-emerald-500/5 flex items-center gap-2">
+                  <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                    <td className="py-4 px-6 text-zinc-900 dark:text-zinc-200 font-semibold">{feat.name}</td>
+                    <td className="py-4 px-6 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/5 flex items-center gap-2">
                       <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                       <span>{feat.samast}</span>
                     </td>
-                    <td className="py-4 px-6 text-zinc-400">{feat.comp}</td>
+                    <td className="py-4 px-6 text-zinc-600 dark:text-zinc-400">{feat.comp}</td>
                   </tr>
                 ))}
               </tbody>
@@ -104,11 +104,11 @@ export function CompetitorComparisonPage() {
         </div>
 
         {/* CTA Card */}
-        <div className="p-8 rounded-2xl border-2 border-[var(--accent)] bg-zinc-900 text-center space-y-4 shadow-2xl">
-          <h2 className="text-2xl font-extrabold text-white">
+        <div className="p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 text-center space-y-4 shadow-xl">
+          <h2 className="text-2xl font-extrabold text-zinc-900 dark:text-white">
             Ready to upgrade your background job reliability?
           </h2>
-          <p className="text-xs sm:text-sm text-zinc-400 max-w-xl mx-auto">
+          <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto">
             Start with 5 free active scheduled jobs forever. No credit card required. Upgrades start at just ₹349/month ($19/mo globally).
           </p>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
@@ -121,7 +121,7 @@ export function CompetitorComparisonPage() {
             </Link>
             <Link
               to="/pricing"
-              className="px-6 py-3 rounded-xl border border-zinc-700 bg-zinc-800 text-zinc-200 font-bold text-xs hover:bg-zinc-700 transition-colors"
+              className="px-6 py-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold text-xs hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors shadow-xs"
             >
               View Pricing Tiers
             </Link>

@@ -79,9 +79,9 @@ export function CrontabGeneratorPage() {
         </div>
 
         {/* Generator Box */}
-        <div className="p-6 sm:p-8 rounded-2xl border border-zinc-800 bg-zinc-900/80 shadow-2xl space-y-6">
+        <div className="p-6 sm:p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 shadow-xl dark:shadow-2xl space-y-6">
           <div className="space-y-2">
-            <label className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-400 block">
+            <label className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block">
               Cron Schedule Expression
             </label>
             <div className="flex items-center gap-3">
@@ -90,7 +90,7 @@ export function CrontabGeneratorPage() {
                   type="text"
                   value={expression}
                   onChange={(e) => setExpression(e.target.value)}
-                  className="w-full px-4 py-3.5 rounded-xl bg-zinc-950 border border-zinc-700 text-lg sm:text-xl font-mono font-bold text-emerald-400 focus:outline-hidden focus:border-[var(--accent)] tracking-wider"
+                  className="w-full px-4 py-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 text-lg sm:text-xl font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-hidden focus:border-[var(--accent)] tracking-wider shadow-inner"
                   placeholder="* * * * *"
                 />
               </div>
@@ -106,8 +106,8 @@ export function CrontabGeneratorPage() {
           </div>
 
           {/* Quick Presets */}
-          <div className="space-y-3 pt-2 border-t border-zinc-800/80">
-            <span className="text-xs font-semibold text-zinc-400 block">Popular Schedule Presets:</span>
+          <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800/80">
+            <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 block">Popular Schedule Presets:</span>
             <div className="flex flex-wrap gap-2">
               {PRESETS.map((preset) => (
                 <button
@@ -116,11 +116,11 @@ export function CrontabGeneratorPage() {
                   onClick={() => setExpression(preset.expr)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
                     expression === preset.expr
-                      ? 'bg-[var(--accent)]/20 border-[var(--accent)] text-white font-bold'
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                      ? 'bg-emerald-50 dark:bg-[var(--accent)]/20 border-emerald-500 dark:border-[var(--accent)] text-emerald-800 dark:text-white font-bold shadow-xs'
+                      : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700 hover:text-zinc-900 dark:hover:text-white'
                   }`}
                 >
-                  <span className="font-mono text-emerald-400 mr-1.5">{preset.expr}</span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400 mr-1.5 font-bold">{preset.expr}</span>
                   <span>{preset.label}</span>
                 </button>
               ))}
@@ -128,10 +128,10 @@ export function CrontabGeneratorPage() {
           </div>
 
           {/* Next Simulated Runs */}
-          <div className="pt-4 border-t border-zinc-800/80 space-y-3">
+          <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800/80 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Next 5 Execution Timestamps (UTC):</span>
               </span>
               <span className="text-[11px] text-zinc-500 font-mono">100% Reliable UTC Clock</span>
@@ -139,9 +139,9 @@ export function CrontabGeneratorPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {nextRuns.map((run, idx) => (
-                <div key={idx} className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-800/80 font-mono text-xs text-zinc-300 flex items-center justify-between">
+                <div key={idx} className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 font-mono text-xs text-zinc-800 dark:text-zinc-300 flex items-center justify-between shadow-2xs">
                   <span className="text-zinc-500 font-semibold mr-2">Run #{idx + 1}:</span>
-                  <span className="text-emerald-400">{run}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">{run}</span>
                 </div>
               ))}
             </div>
@@ -149,13 +149,13 @@ export function CrontabGeneratorPage() {
         </div>
 
         {/* Code Snippets Section */}
-        <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/60 space-y-4">
+        <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-indigo-400" />
+            <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
               <span>cURL Webhook Dispatch Code</span>
             </h3>
-            <span className="text-xs text-zinc-400">Trigger via Samast Cron API</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">Trigger via Samast Cron API</span>
           </div>
 
           <CodeBlock
@@ -173,12 +173,12 @@ export function CrontabGeneratorPage() {
         </div>
 
         {/* Upgrade Banner */}
-        <div className="p-8 rounded-2xl border-2 border-[var(--accent)] bg-gradient-to-r from-zinc-900 to-zinc-950 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl">
+        <div className="p-8 rounded-2xl border border-zinc-200 dark:border-[var(--accent)] bg-zinc-100 dark:bg-gradient-to-r dark:from-zinc-900 dark:to-zinc-950 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl">
           <div className="space-y-2 text-center sm:text-left">
-            <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+            <h2 className="text-xl font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
               <span>Deploy this cron job with sub-minute precision!</span>
             </h2>
-            <p className="text-xs text-zinc-400 max-w-xl">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-xl">
               Samast Cron handles minute-level schedules, automatic retries, instant notification alerts, and full HTTP response telemetry.
             </p>
           </div>
