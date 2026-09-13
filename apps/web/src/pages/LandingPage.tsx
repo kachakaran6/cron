@@ -130,28 +130,28 @@ function CronSchedulerVisualizer({ dark }: { dark: boolean }) {
       dark ? 'border-zinc-800 bg-zinc-950/90' : 'border-zinc-300 bg-white/95'
     }`}>
       {/* Visualizer Terminal Top Bar */}
-      <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800 text-[11px]">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800 text-[10px] sm:text-[11px]">
+        <div className="flex items-center gap-1.5 sm:gap-2 truncate pr-1">
+          <div className="flex items-center gap-1.5 shrink-0">
             <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
             <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
           </div>
-          <span className="font-semibold text-zinc-700 dark:text-zinc-300 ml-2">
+          <span className="font-semibold text-zinc-700 dark:text-zinc-300 ml-1 truncate">
             CRON ENGINE KERNEL: ACTIVE
           </span>
         </div>
 
-        <div className="flex items-center gap-2 text-zinc-500">
+        <div className="flex items-center gap-1.5 text-zinc-500 shrink-0">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
           <span>{timeString || 'LIVE'}</span>
         </div>
       </div>
 
       {/* Preset Expression Selector */}
-      <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="text-[11px] text-zinc-500">SELECT CRON PATTERN:</div>
-        <div className="flex flex-wrap gap-1.5">
+      <div className="mt-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="text-[10px] sm:text-[11px] text-zinc-500 font-semibold">SELECT CRON PATTERN:</div>
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5">
           {[
             { label: 'Every 1m', expr: '* * * * *' },
             { label: 'Every 5m', expr: '*/5 * * * *' },
@@ -161,7 +161,7 @@ function CronSchedulerVisualizer({ dark }: { dark: boolean }) {
             <button
               key={p.expr}
               onClick={() => setSelectedPreset(p.expr)}
-              className={`px-2.5 py-1 rounded text-[11px] border transition-colors ${
+              className={`w-full sm:w-auto px-2.5 py-1 rounded text-[11px] border text-center transition-colors ${
                 selectedPreset === p.expr
                   ? 'border-[var(--accent)] bg-[var(--accent-light-bg)] dark:bg-[var(--accent-muted)] text-[var(--accent-light-text)] dark:text-[var(--accent-text)] font-semibold'
                   : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 text-zinc-600 dark:text-zinc-400'
@@ -310,18 +310,12 @@ Thank you!`;
       />
 
       {/* ── Nav ─────────────────────────────────────────────────── */}
-      <header className={`h-14 border-b px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 ${
+      <header className={`h-14 border-b px-3 sm:px-6 flex items-center justify-between sticky top-0 z-40 ${
         dark ? 'border-zinc-800 bg-zinc-950/95 backdrop-blur-sm' : 'border-zinc-200 bg-white/95 backdrop-blur-sm'
       }`}>
         <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div 
-              style={{ backgroundColor: 'var(--accent)' }}
-              className="w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs text-white shadow-sm"
-            >
-              SC
-            </div>
-            <span className="font-semibold text-sm tracking-tight text-zinc-900 dark:text-zinc-100">
+          <Link to="/" className="flex items-center gap-2">
+            <span className="font-bold text-base sm:text-lg tracking-tight text-zinc-900 dark:text-zinc-100">
               Samast Cron
             </span>
           </Link>
@@ -335,24 +329,24 @@ Thank you!`;
             </a>
           </nav>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             onClick={toggleTheme}
-            className={`p-1.5 rounded border transition-colors ${dark ? 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-100' : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:bg-zinc-100'}`}
+            className={`p-1.5 rounded-lg border transition-colors ${dark ? 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-100' : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:bg-zinc-100'}`}
             title="Toggle theme"
           >
             {dark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
           </button>
           {!isAuthenticated && (
-            <Link to="/login" className={`text-xs px-3 py-1.5 rounded transition-colors ${dark ? 'text-zinc-400 hover:text-zinc-100' : 'text-zinc-600 hover:text-zinc-900'}`}>
+            <Link to="/login" className={`hidden sm:inline-block text-xs px-2.5 py-1.5 rounded transition-colors ${dark ? 'text-zinc-400 hover:text-zinc-100' : 'text-zinc-600 hover:text-zinc-900'}`}>
               Sign in
             </Link>
           )}
           <Link
             to={isAuthenticated ? '/dashboard' : '/register'}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded transition-colors btn-accent"
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors btn-accent shadow-xs"
           >
-            {isAuthenticated ? 'Open Console' : 'Get Started'}
+            <span>{isAuthenticated ? 'Console' : 'Get Started'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
