@@ -132,6 +132,26 @@ export async function checkAndDispatchAlerts(
               text: message,
             });
           }
+        } else if (type === 'pushover') {
+          const userKey = cleanEnv(ch.config?.userKey || target);
+          const apiToken = cleanEnv(ch.config?.apiToken || process.env.PUSHOVER_API_TOKEN);
+          if (userKey && apiToken) {
+            const bodyParams = new URLSearchParams({
+              token: apiToken,
+              user: userKey,
+              title: `[Samast Cron Alert] ${title}`,
+              message: `${message}\nTarget URL: ${job.url}`,
+              url: job.url || 'https://cron.samast.pro/dashboard/schedules',
+              url_title: 'Open Samast Cron',
+              priority: eventType === 'JOB_FAILED' ? '1' : '0',
+            });
+            await fetch('https://api.pushover.net/1/messages.json', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: bodyParams.toString(),
+              signal: AbortSignal.timeout(10000),
+            });
+          }
         } else {
           // Custom HTTP webhook
           await fetch(target, {

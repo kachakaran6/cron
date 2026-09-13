@@ -119,6 +119,8 @@ export class NotificationsService {
         return await this.sendSlack(target, payload, channel.name);
       } else if (type === 'discord') {
         return await this.sendDiscord(target, payload, channel.name);
+      } else if (type === 'pushover') {
+        return await this.sendPushover(target, payload, channel);
       } else {
         // default: generic webhook
         return await this.sendWebhook(target, payload, channel.name);
@@ -181,7 +183,7 @@ export class NotificationsService {
       });
 
       if (res.ok) {
-        return { success: true, message: `Real email delivered to ${target} via Resend!` };
+        return { success: true, message: `Email delivered successfully to ${target}!` };
       }
     }
 
@@ -201,7 +203,7 @@ export class NotificationsService {
         html: emailHtml,
       });
 
-      return { success: true, message: `Real email successfully delivered to ${target} via SMTP (${smtpHost})!` };
+      return { success: true, message: `Email delivered successfully to ${target}!` };
     }
 
     // 3. Fallback when SMTP environment variables not yet set
@@ -211,6 +213,69 @@ export class NotificationsService {
       message: `Test email dispatched for ${target}. (Note: To deliver real emails directly to your Gmail inbox, set SMTP_HOST, SMTP_USER, and SMTP_PASS or RESEND_API_KEY in Coolify environment variables).`,
       detail: 'CONFIG_NOTE: Set SMTP_HOST (e.g. smtp.gmail.com), SMTP_USER, and SMTP_PASS (Gmail App Password) in Coolify to deliver real emails to inbox.',
     };
+  }
+
+  private async sendPushover(target: string, payload: NotificationPayload, channel: any) {
+    const userKey = cleanEnv(channel.config?.userKey || target);
+    const apiToken = cleanEnv(channel.config?.apiToken || process.env.PUSHOVER_API_TOKEN);
+
+    if (!apiToken) {
+      return {
+        success: false,
+        message: 'Pushover App API Token is missing. Provide an App Token when adding the channel or set PUSHOVER_API_TOKEN on your server.',
+        detail: 'CONFIG_NOTE: Create a free application token at pushover.net/apps/build or set PUSHOVER_API_TOKEN in environment variables.',
+      };
+    }
+
+    if (!userKey) {
+      return {
+        success: false,
+        message: 'Pushover User Key is required.',
+      };
+    }
+
+    const priority = payload.event === 'JOB_FAILED' ? '1' : '0';
+    const bodyParams = new URLSearchParams({
+      token: apiToken,
+      user: userKey,
+      title: payload.title || 'Samast Cron Alert',
+      message: `${payload.message}${payload.jobUrl ? `\nTarget URL: ${payload.jobUrl}` : ''}`,
+      url: payload.jobUrl || 'https://cron.samast.pro/dashboard/schedules',
+      url_title: 'Open Samast Cron',
+      priority,
+    });
+
+    try {
+      const res = await fetch('https://api.pushover.net/1/messages.json', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: bodyParams.toString(),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as any;
+
+      if (res.ok && data.status === 1) {
+        return {
+          success: true,
+          message: `Push notification delivered successfully to Pushover device (${userKey})!`,
+        };
+      }
+
+      const errorMsg = Array.isArray(data.errors) ? data.errors.join(', ') : 'Pushover request rejected';
+      return {
+        success: false,
+        message: `Pushover error: ${errorMsg}`,
+        detail: `HTTP Status ${res.status}`,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Failed to connect to Pushover: ${err.message}`,
+      };
+    }
   }
 
   private async sendWebhook(target: string, payload: NotificationPayload, channelName: string) {

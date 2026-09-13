@@ -7,6 +7,7 @@ import {
   Mail,
   Webhook,
   MessageSquare,
+  Smartphone,
   Check,
   X,
   Send,
@@ -29,8 +30,9 @@ export default function NotificationsPage() {
   const queryClient = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
   const [name, setName] = useState('');
-  const [type, setType] = useState<'email' | 'webhook' | 'slack' | 'discord'>('email');
+  const [type, setType] = useState<'email' | 'webhook' | 'slack' | 'discord' | 'pushover'>('email');
   const [target, setTarget] = useState('');
+  const [pushoverAppToken, setPushoverAppToken] = useState('');
 
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testFeedback, setTestFeedback] = useState<{
@@ -54,6 +56,7 @@ export default function NotificationsPage() {
       setShowAddModal(false);
       setName('');
       setTarget('');
+      setPushoverAppToken('');
     },
   });
 
@@ -75,10 +78,18 @@ export default function NotificationsPage() {
     e.preventDefault();
     if (!name.trim() || !target.trim()) return;
 
+    const config: Record<string, any> = { target: target.trim() };
+    if (type === 'pushover') {
+      config.userKey = target.trim();
+      if (pushoverAppToken.trim()) {
+        config.apiToken = pushoverAppToken.trim();
+      }
+    }
+
     createMutation.mutate({
       name: name.trim(),
       type,
-      config: { target: target.trim() },
+      config,
       enabled: true,
     });
   };
@@ -113,6 +124,8 @@ export default function NotificationsPage() {
     switch (t?.toLowerCase()) {
       case 'email':
         return <Mail className="w-4 h-4 text-sky-500" />;
+      case 'pushover':
+        return <Smartphone className="w-4 h-4 text-amber-500" />;
       case 'slack':
       case 'discord':
         return <MessageSquare className="w-4 h-4 text-emerald-500" />;
@@ -310,33 +323,93 @@ export default function NotificationsPage() {
                 </label>
                 <select
                   value={type}
-                  onChange={(e: any) => setType(e.target.value)}
+                  onChange={(e: any) => {
+                    setType(e.target.value);
+                    setTarget('');
+                    setPushoverAppToken('');
+                  }}
                   className="w-full px-2.5 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus-ring shadow-xs"
                 >
                   <option value="email">Email Address</option>
+                  <option value="pushover">Pushover (Mobile / Desktop Push)</option>
                   <option value="slack">Slack Webhook</option>
                   <option value="discord">Discord Webhook</option>
                   <option value="webhook">Custom HTTP Webhook</option>
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  {type === 'email' ? 'Recipient Email' : 'Webhook URL'}
-                </label>
-                <input
-                  type={type === 'email' ? 'email' : 'url'}
-                  required
-                  placeholder={
-                    type === 'email'
-                      ? 'alerts@yourcompany.com'
-                      : 'https://hooks.slack.com/services/...'
-                  }
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-xs font-mono text-zinc-900 dark:text-zinc-100 focus-ring shadow-xs"
-                />
-              </div>
+              {type === 'pushover' ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Pushover User Key <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. uQiRzpo4DXghDmr9QzzfQu27cmVRsG"
+                      value={target}
+                      onChange={(e) => setTarget(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-xs font-mono text-zinc-900 dark:text-zinc-100 focus-ring shadow-xs"
+                    />
+                    <p className="text-[11px] text-zinc-500 mt-1">
+                      Your 30-character User Key from your{' '}
+                      <a
+                        href="https://pushover.net"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[var(--accent)] underline hover:opacity-80"
+                      >
+                        Pushover Dashboard
+                      </a>.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Pushover Application API Token{' '}
+                      <span className="text-zinc-400 font-normal">(Optional if set in server env)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. azGDORePK8gMaC0QOYAMyEEuzJnyUi"
+                      value={pushoverAppToken}
+                      onChange={(e) => setPushoverAppToken(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-xs font-mono text-zinc-900 dark:text-zinc-100 focus-ring shadow-xs"
+                    />
+                    <p className="text-[11px] text-zinc-500 mt-1">
+                      Create an API token at{' '}
+                      <a
+                        href="https://pushover.net/apps/build"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[var(--accent)] underline hover:opacity-80"
+                      >
+                        pushover.net/apps/build
+                      </a>{' '}
+                      or configure <code>PUSHOVER_API_TOKEN</code> on server.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    {type === 'email' ? 'Recipient Email' : 'Webhook URL'}
+                  </label>
+                  <input
+                    type={type === 'email' ? 'email' : 'url'}
+                    required
+                    placeholder={
+                      type === 'email'
+                        ? 'alerts@yourcompany.com'
+                        : 'https://hooks.slack.com/services/...'
+                    }
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-xs font-mono text-zinc-900 dark:text-zinc-100 focus-ring shadow-xs"
+                  />
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-zinc-200 dark:border-zinc-800">
                 <button

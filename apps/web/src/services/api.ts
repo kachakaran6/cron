@@ -237,7 +237,7 @@ export interface NotificationChannelDTO {
   id: string;
   organizationId: string;
   name: string;
-  type: 'email' | 'webhook' | 'slack' | 'discord';
+  type: 'email' | 'webhook' | 'slack' | 'discord' | 'pushover';
   config: Record<string, any>;
   enabled: boolean;
   createdAt: string;
@@ -249,7 +249,7 @@ export async function fetchNotificationChannels(): Promise<NotificationChannelDT
 
 export async function createNotificationChannel(data: {
   name: string;
-  type: 'email' | 'webhook' | 'slack' | 'discord';
+  type: 'email' | 'webhook' | 'slack' | 'discord' | 'pushover';
   config: Record<string, any>;
   enabled?: boolean;
 }): Promise<NotificationChannelDTO> {

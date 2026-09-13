@@ -6,9 +6,9 @@ export class CreateNotificationChannelDto {
   @IsString()
   name!: string;
 
-  @ApiProperty({ enum: ['email', 'webhook', 'slack', 'discord'], default: 'email' })
-  @IsIn(['email', 'webhook', 'slack', 'discord'])
-  type!: 'email' | 'webhook' | 'slack' | 'discord';
+  @ApiProperty({ enum: ['email', 'webhook', 'slack', 'discord', 'pushover'], default: 'email' })
+  @IsIn(['email', 'webhook', 'slack', 'discord', 'pushover'])
+  type!: 'email' | 'webhook' | 'slack' | 'discord' | 'pushover';
 
   @ApiProperty({ example: { url: 'https://hooks.slack.com/services/...' } })
   @IsOptional()
