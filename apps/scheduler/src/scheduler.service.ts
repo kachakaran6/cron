@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { db, cronJobs } from '@cron-saas/database';
+import { db, cronJobs, organizations } from '@cron-saas/database';
 import { lte, and, eq } from 'drizzle-orm';
 import { calculateNextRun } from './utils';
 
@@ -25,11 +25,16 @@ export class SchedulerService {
 
     try {
       const pendingJobs = await db
-        .select()
+        .select({
+          job: cronJobs,
+          orgPlanId: organizations.planId,
+        })
         .from(cronJobs)
+        .leftJoin(organizations, eq(cronJobs.organizationId, organizations.id))
         .where(and(eq(cronJobs.enabled, true), lte(cronJobs.nextRunAt, windowEnd)));
 
-      for (const job of pendingJobs) {
+      for (const { job, orgPlanId } of pendingJobs) {
+        const isPro = orgPlanId === 'pro';
         const targetTime = job.nextRunAt.getTime();
         const delay = Math.max(0, targetTime - Date.now());
 
@@ -47,6 +52,9 @@ export class SchedulerService {
           {
             delay,
             jobId: `${job.id}-${targetTime}`, // Unique deduplication key
+            priority: isPro ? 1 : 10, // Dedicated high-priority execution for Pro/Annual
+            attempts: isPro ? (job.retryCount || 3) : 1,
+            backoff: isPro ? { type: 'exponential', delay: job.retryDelayMs || 5000 } : undefined,
             removeOnComplete: 100,
             removeOnFail: 500,
           }
@@ -59,7 +67,7 @@ export class SchedulerService {
           .set({ nextRunAt: nextRun, updatedAt: new Date() })
           .where(eq(cronJobs.id, job.id));
 
-        console.log(`[Scheduler] Enqueued job ${job.name} (${job.id}) for run at ${job.nextRunAt.toISOString()}`);
+        console.log(`[Scheduler] Enqueued job ${job.name} (${job.id}, tier=${isPro ? 'PRO' : 'FREE'}) for run at ${job.nextRunAt.toISOString()}`);
       }
     } catch (err: any) {
       console.error(`[Scheduler] Polling loop error: ${err.message}`);

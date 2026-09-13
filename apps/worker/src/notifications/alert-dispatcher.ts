@@ -1,7 +1,22 @@
-import { db, cronJobs, cronJobRuns, notificationChannels } from '@cron-saas/database';
+import { db, cronJobs, cronJobRuns, notificationChannels, subscriptions, organizations } from '@cron-saas/database';
 import { eq, and, desc } from 'drizzle-orm';
-
+import IORedis from 'ioredis';
 import nodemailer from 'nodemailer';
+
+let redisClient: IORedis | null = null;
+function getRedis(): IORedis {
+  if (!redisClient) {
+    redisClient = new IORedis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: Number(process.env.REDIS_PORT) || 6379,
+      password: process.env.REDIS_PASSWORD || undefined,
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+    });
+    redisClient.connect().catch(() => {});
+  }
+  return redisClient;
+}
 
 function cleanEnv(val?: string) {
   if (!val) return '';
@@ -96,6 +111,43 @@ export async function checkAndDispatchAlerts(
             signal: AbortSignal.timeout(10000),
           });
         } else if (type === 'email') {
+          // 1. Quota Check: Enforce 50 email alerts/month for Free tier (Unlimited for Pro)
+          const [sub] = await db
+            .select({ plan: subscriptions.plan, gumroadStatus: subscriptions.gumroadStatus })
+            .from(subscriptions)
+            .where(eq(subscriptions.organizationId, job.organizationId))
+            .limit(1);
+
+          let isPro = sub?.plan === 'PRO' && sub?.gumroadStatus !== 'EXPIRED' && sub?.gumroadStatus !== 'REFUNDED';
+          if (!isPro) {
+            const [org] = await db
+              .select({ planId: organizations.planId })
+              .from(organizations)
+              .where(eq(organizations.id, job.organizationId))
+              .limit(1);
+            if (org?.planId === 'pro') isPro = true;
+          }
+
+          if (!isPro) {
+            try {
+              const redis = getRedis();
+              const now = new Date();
+              const monthKey = `email_alert_quota:${job.organizationId}:${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
+              const count = await redis.incr(monthKey);
+              if (count === 1) {
+                await redis.expire(monthKey, 45 * 86400); // 45-day TTL
+              }
+              if (count > 50) {
+                console.warn(
+                  `[AlertDispatcher] Free tier monthly email alert quota (50/month) exceeded for organization ${job.organizationId} (attempt #${count}). Email suppressed.`
+                );
+                return;
+              }
+            } catch (quotaErr: any) {
+              console.warn(`[AlertDispatcher] Quota check error: ${quotaErr.message}`);
+            }
+          }
+
           const resendKey = cleanEnv(process.env.RESEND_API_KEY);
           const smtpHost = cleanEnv(process.env.SMTP_HOST);
           const smtpUser = cleanEnv(process.env.SMTP_USER);
