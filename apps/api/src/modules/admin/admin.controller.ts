@@ -1,15 +1,19 @@
-import { Controller, Get, Post, Delete, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Patch, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiSecurity, ApiQuery } from '@nestjs/swagger';
 import { CombinedAuthGuard } from '../../common/guards/combined-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
 import { AdminService, SystemRuntimeConfig } from './admin.service';
+import { PlansPricingService, PlansAndPricingSettings } from './plans-pricing.service';
 
 @ApiTags('Admin')
 @ApiSecurity('dashboard-jwt')
 @UseGuards(CombinedAuthGuard, AdminGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly plansPricingService: PlansPricingService,
+  ) {}
 
   @Get('stats')
   @ApiOperation({ summary: 'Get developer admin system stats and metrics' })
@@ -77,5 +81,35 @@ export class AdminController {
   @ApiOperation({ summary: 'Update system runtime configuration' })
   async updateConfig(@Body() body: Partial<SystemRuntimeConfig>) {
     return this.adminService.updateConfig(body);
+  }
+
+  @Get('plans-pricing')
+  @ApiOperation({ summary: 'Get current plans, feature toggles, quotas and pricing configuration' })
+  async getPlansPricing() {
+    return this.plansPricingService.getSettings();
+  }
+
+  @Put('plans-pricing')
+  @ApiOperation({ summary: 'Update plans, feature toggles, quotas and pricing configuration' })
+  async updatePlansPricing(@Body() body: Partial<PlansAndPricingSettings>, @Req() req: any) {
+    const adminId = req?.userId || req?.user?.id || 'admin';
+    const settings = await this.plansPricingService.updateSettings(body, adminId);
+    return {
+      success: true,
+      settings,
+      message: 'Plans and pricing settings updated successfully',
+    };
+  }
+
+  @Post('plans-pricing/reset')
+  @ApiOperation({ summary: 'Reset plans, feature toggles, quotas and pricing to defaults' })
+  async resetPlansPricing(@Req() req: any) {
+    const adminId = req?.userId || req?.user?.id || 'admin';
+    const settings = await this.plansPricingService.resetToDefaults(adminId);
+    return {
+      success: true,
+      settings,
+      message: 'Plans and pricing reset to system factory defaults',
+    };
   }
 }

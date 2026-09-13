@@ -4,6 +4,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { CreateNotificationChannelDto } from './dto/create-notification-channel.dto';
 import { cleanEnv } from '../auth/auth-url.util';
 import * as nodemailer from 'nodemailer';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 
 export interface NotificationPayload {
   title: string;
@@ -20,6 +21,8 @@ export interface NotificationPayload {
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
+  constructor(private readonly entitlementsService: EntitlementsService) {}
+
   async list(organizationId: string) {
     return db
       .select()
@@ -29,6 +32,8 @@ export class NotificationsService {
   }
 
   async create(organizationId: string, dto: CreateNotificationChannelDto) {
+    await this.entitlementsService.assertCanCreateNotificationChannel(organizationId);
+
     const [channel] = await db
       .insert(notificationChannels)
       .values({
@@ -114,7 +119,14 @@ export class NotificationsService {
 
     try {
       if (type === 'email') {
-        return await this.sendEmail(target, payload, channel.name);
+        if (channel.organizationId) {
+          await this.entitlementsService.assertCanSendEmail(channel.organizationId);
+        }
+        const res = await this.sendEmail(target, payload, channel.name);
+        if (res.success && channel.organizationId) {
+          this.entitlementsService.recordEmailSent(channel.organizationId);
+        }
+        return res;
       } else if (type === 'slack') {
         return await this.sendSlack(target, payload, channel.name);
       } else if (type === 'discord') {

@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger, OnModuleInit } from '@nestjs/common';
 import { db, cronJobs, cronJobRuns, organizations, notificationChannels } from '@cron-saas/database';
-import { eq, desc, and, lte } from 'drizzle-orm';
+import { eq, desc, and, lte, gte, count } from 'drizzle-orm';
 import * as cronParser from 'cron-parser';
 import { Queue } from 'bullmq';
 import { CreateCronJobDto } from './dto/create-cron-job.dto';
@@ -91,6 +91,25 @@ export class CronJobsService implements OnModuleInit {
     }
   }
 
+  getScheduleIntervalSeconds(schedule: string, timezone = 'UTC'): number {
+    try {
+      const parseFn =
+        (cronParser as any).parseExpression ||
+        (cronParser as any).default?.parseExpression ||
+        (cronParser as any);
+
+      const interval = parseFn(schedule, {
+        currentDate: new Date(),
+        tz: timezone || 'UTC',
+      });
+      const t1 = interval.next().toDate();
+      const t2 = interval.next().toDate();
+      return Math.max(1, Math.round((t2.getTime() - t1.getTime()) / 1000));
+    } catch {
+      return 60;
+    }
+  }
+
   async createJob(organizationId: string, createdById: string, dto: CreateCronJobDto) {
     // 1. Ensure valid organizationId (auto-heal if missing or placeholder)
     if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
@@ -119,8 +138,10 @@ export class CronJobsService implements OnModuleInit {
       }
     }
 
-    // 2. Validate Entitlements
+    // 2. Validate Entitlements (Job limit & minimum interval)
     await this.entitlementsService.assertCanCreateJob(organizationId);
+    const intervalSeconds = this.getScheduleIntervalSeconds(dto.schedule, dto.timezone);
+    await this.entitlementsService.assertCanSetInterval(organizationId, intervalSeconds);
 
     // 3. Compute nextRunAt safely
     const nextRunAt = this.calculateNextRun(dto.schedule, dto.timezone);
@@ -171,6 +192,33 @@ export class CronJobsService implements OnModuleInit {
 
     if (!existing) {
       throw new NotFoundException('Cron job not found or you do not have permission to modify it');
+    }
+
+    // Validate Interval if schedule changed
+    if (dto.schedule) {
+      const intervalSeconds = this.getScheduleIntervalSeconds(dto.schedule, dto.timezone || existing.timezone);
+      await this.entitlementsService.assertCanSetInterval(organizationId, intervalSeconds);
+    }
+
+    // Check limits when re-enabling a disabled job
+    if (dto.enabled === true && !existing.enabled) {
+      const caps = await this.entitlementsService.getCapabilities(organizationId);
+      const [activeCount] = await db
+        .select({ value: count() })
+        .from(cronJobs)
+        .where(and(eq(cronJobs.organizationId, organizationId), eq(cronJobs.enabled, true)));
+
+      const currentActive = activeCount?.value ? Number(activeCount.value) : 0;
+      if (currentActive >= caps.maxJobs) {
+        throw new ForbiddenException(
+          `Active job limit reached for ${caps.plan} tier (${currentActive}/${caps.maxJobs} active jobs). Upgrade to Pro to enable more jobs.`
+        );
+      }
+
+      // Also verify interval for the re-enabled job
+      const scheduleToCheck = dto.schedule || existing.schedule;
+      const intervalSeconds = this.getScheduleIntervalSeconds(scheduleToCheck, dto.timezone || existing.timezone);
+      await this.entitlementsService.assertCanSetInterval(organizationId, intervalSeconds);
     }
 
     // Recompute nextRunAt if schedule or timezone updated
@@ -277,6 +325,23 @@ export class CronJobsService implements OnModuleInit {
   }
 
   async getJobRuns(cronJobId: string, limit = 50) {
+    const [job] = await db
+      .select({ organizationId: cronJobs.organizationId })
+      .from(cronJobs)
+      .where(eq(cronJobs.id, cronJobId))
+      .limit(1);
+
+    if (job) {
+      const caps = await this.entitlementsService.getCapabilities(job.organizationId);
+      const retentionCutoff = new Date(Date.now() - caps.historyRetentionDays * 24 * 60 * 60 * 1000);
+      return db
+        .select()
+        .from(cronJobRuns)
+        .where(and(eq(cronJobRuns.cronJobId, cronJobId), gte(cronJobRuns.startedAt, retentionCutoff)))
+        .orderBy(desc(cronJobRuns.startedAt))
+        .limit(limit);
+    }
+
     return db
       .select()
       .from(cronJobRuns)
@@ -418,24 +483,8 @@ export class CronJobsService implements OnModuleInit {
     const [job] = await db.select().from(cronJobs).where(eq(cronJobs.id, id)).limit(1);
     if (!job) throw new NotFoundException('Cron job not found');
 
-    // 1. Execute immediately and record run log
+    // 1. Execute immediately and record run log synchronously
     const runResult = await this.executeJob(job);
-
-    // 2. Also notify Redis execution queue if available
-    if (this.executionQueue) {
-      this.executionQueue
-        .add(
-          'execute-http-job',
-          {
-            cronJobId: job.id,
-            url: job.url,
-            method: job.method,
-            attempt: 1,
-          },
-          { removeOnComplete: true }
-        )
-        .catch(() => {});
-    }
 
     return {
       message: 'Immediate execution triggered successfully',
@@ -449,9 +498,28 @@ export class CronJobsService implements OnModuleInit {
 
   private async purgeOldLogs() {
     try {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      await db.delete(cronJobRuns).where(lte(cronJobRuns.startedAt, thirtyDaysAgo));
-      this.logger.log('Purged cron execution logs older than 30 days.');
+      // 1. Fetch all organizations and purge runs older than their plan retention window
+      const orgList = await db.select({ id: organizations.id }).from(organizations);
+      for (const org of orgList) {
+        const caps = await this.entitlementsService.getCapabilities(org.id);
+        const cutoff = new Date(Date.now() - caps.historyRetentionDays * 24 * 60 * 60 * 1000);
+
+        const jobs = await db
+          .select({ id: cronJobs.id })
+          .from(cronJobs)
+          .where(eq(cronJobs.organizationId, org.id));
+
+        for (const j of jobs) {
+          await db
+            .delete(cronJobRuns)
+            .where(and(eq(cronJobRuns.cronJobId, j.id), lte(cronJobRuns.startedAt, cutoff)));
+        }
+      }
+
+      // 2. Absolute purge of all runs older than 90 days
+      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      await db.delete(cronJobRuns).where(lte(cronJobRuns.startedAt, ninetyDaysAgo));
+      this.logger.log('Executed tier-based retention log purge (Free: 3d, Pro: 30d, Annual: 90d).');
     } catch (err: any) {
       this.logger.warn(`Retention purge error: ${err.message}`);
     }

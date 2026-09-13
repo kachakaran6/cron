@@ -52,9 +52,9 @@ export class CombinedAuthGuard implements CanActivate {
       try {
         const jwtSecret = cleanEnv(process.env.JWT_SECRET) || 'samast_cron_jwt_secret_change_in_production_2026';
         const payload = jwt.verify(bearerToken, jwtSecret) as any;
-        req.userId = payload.sub;
+        req.userId = payload.sub || payload.userId;
         req.userEmail = payload.email;
-        req.organizationId = payload.orgId;
+        req.organizationId = payload.orgId || payload.organizationId;
         req.authType = 'JWT';
 
         // Auto-heal missing, dummy, or non-existent orgId in DB

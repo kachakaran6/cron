@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { db, users, organizations, cronJobs, cronJobRuns, statusPages, apiKeys, notificationChannels } from '@cron-saas/database';
+import { db, users, organizations, cronJobs, cronJobRuns, statusPages, apiKeys, notificationChannels, subscriptions, entitlements } from '@cron-saas/database';
 import { eq, sql, count, desc, gte, lte, and, inArray } from 'drizzle-orm';
 import { FileLoggerService } from '../../common/logger/file-logger.service';
 import * as fs from 'node:fs';
@@ -253,13 +253,27 @@ export class AdminService {
 
     return Promise.all(
       allUsers.map(async (u) => {
-        const [userOrg] = await db
+        let [userOrg] = await db
           .select()
           .from(organizations)
           .where(eq(organizations.ownerId, u.id))
           .limit(1);
 
-        const orgId = userOrg?.id;
+        if (!userOrg) {
+          const slug = (u.email.split('@')[0] || 'org').replace(/[^a-z0-9]/gi, '-').toLowerCase() + '-' + u.id.slice(0, 8);
+          const [newOrg] = await db
+            .insert(organizations)
+            .values({
+              name: `${u.name || u.email.split('@')[0]}'s Organization`,
+              slug,
+              ownerId: u.id,
+              planId: 'free',
+            })
+            .returning();
+          userOrg = newOrg;
+        }
+
+        const orgId = userOrg.id;
         let jobCount = 0;
         if (orgId) {
           const [jCount] = await db
@@ -269,11 +283,25 @@ export class AdminService {
           jobCount = Number(jCount?.value || 0);
         }
 
+        // Fetch subscription state
+        const [sub] = await db
+          .select()
+          .from(subscriptions)
+          .where(eq(subscriptions.organizationId, orgId))
+          .limit(1);
+
+        let planId = userOrg.planId || 'free';
+        if (sub && sub.plan === 'PRO' && sub.gumroadStatus !== 'EXPIRED' && sub.gumroadStatus !== 'REFUNDED') {
+          if (planId !== 'annual' && planId !== 'enterprise') {
+            planId = 'pro';
+          }
+        }
+
         return {
           ...u,
-          organization: userOrg || null,
+          organization: userOrg,
           jobCount,
-          planId: userOrg?.planId || 'free',
+          planId,
         };
       })
     );
@@ -294,17 +322,101 @@ export class AdminService {
   }
 
   async updateUserPlan(targetUserId: string, planId: string) {
-    const [org] = await db.select().from(organizations).where(eq(organizations.ownerId, targetUserId)).limit(1);
-    if (!org) throw new NotFoundException('User organization not found');
+    const normalizedPlan = (planId || 'free').toLowerCase();
+    const isPro = normalizedPlan === 'pro' || normalizedPlan === 'enterprise' || normalizedPlan === 'annual';
+    const isAnnual = normalizedPlan === 'annual' || normalizedPlan === 'enterprise';
 
+    let [org] = await db.select().from(organizations).where(eq(organizations.ownerId, targetUserId)).limit(1);
+    if (!org) {
+      const [u] = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
+      if (!u) throw new NotFoundException('User not found');
+      const slug = (u.email.split('@')[0] || 'org').replace(/[^a-z0-9]/gi, '-').toLowerCase() + '-' + u.id.slice(0, 8);
+      const [newOrg] = await db
+        .insert(organizations)
+        .values({
+          name: `${u.name || u.email.split('@')[0]}'s Organization`,
+          slug,
+          ownerId: u.id,
+          planId: isAnnual ? 'annual' : isPro ? 'pro' : 'free',
+        })
+        .returning();
+      org = newOrg;
+    }
+
+    // 1. Update Organization
     const [updatedOrg] = await db
       .update(organizations)
-      .set({ planId, updatedAt: new Date() })
+      .set({ planId: isAnnual ? 'annual' : isPro ? 'pro' : 'free', updatedAt: new Date() })
       .where(eq(organizations.id, org.id))
       .returning();
 
-    this.fileLogger.logInfo(`Updated organization ${org.name} plan to ${planId}`, 'ADMIN', { targetUserId, planId });
-    return updatedOrg;
+    // 2. Sync Subscriptions Table
+    const [existingSub] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.organizationId, org.id))
+      .limit(1);
+
+    if (existingSub) {
+      await db
+        .update(subscriptions)
+        .set({
+          plan: isPro ? 'PRO' : 'FREE',
+          billingStatus: isPro ? 'ACTIVE' : 'EXPIRED',
+          gumroadStatus: isPro ? 'ACTIVE' : 'EXPIRED',
+          updatedAt: new Date(),
+        })
+        .where(eq(subscriptions.id, existingSub.id));
+    } else {
+      await db.insert(subscriptions).values({
+        userId: targetUserId,
+        organizationId: org.id,
+        plan: isPro ? 'PRO' : 'FREE',
+        billingStatus: isPro ? 'ACTIVE' : 'EXPIRED',
+        gumroadStatus: isPro ? 'ACTIVE' : 'EXPIRED',
+      });
+    }
+
+    // 3. Sync Entitlements Table
+    const maxJobs = !isPro ? 5 : isAnnual ? 1000 : 500;
+    const minIntervalSeconds = !isPro ? 60 : isAnnual ? 5 : 10;
+    const historyRetentionDays = !isPro ? 3 : isAnnual ? 90 : 30;
+
+    const [existingEnt] = await db
+      .select()
+      .from(entitlements)
+      .where(eq(entitlements.organizationId, org.id))
+      .limit(1);
+
+    if (existingEnt) {
+      await db
+        .update(entitlements)
+        .set({
+          maxJobs,
+          minIntervalSeconds,
+          historyRetentionDays,
+          updatedAt: new Date(),
+        })
+        .where(eq(entitlements.id, existingEnt.id));
+    } else {
+      await db.insert(entitlements).values({
+        organizationId: org.id,
+        maxJobs,
+        minIntervalSeconds,
+        historyRetentionDays,
+        customHeaders: true,
+        webhookAlerts: true,
+      });
+    }
+
+    this.fileLogger.logInfo(`Admin updated organization ${org.name} plan to ${planId}`, 'ADMIN', { targetUserId, planId });
+    return {
+      ...updatedOrg,
+      plan: isPro ? 'PRO' : 'FREE',
+      maxJobs,
+      minIntervalSeconds,
+      historyRetentionDays,
+    };
   }
 
   async deleteUser(targetUserId: string) {

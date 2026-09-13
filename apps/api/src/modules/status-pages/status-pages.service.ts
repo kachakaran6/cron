@@ -3,10 +3,13 @@ import { db, statusPages, cronJobs, cronJobRuns } from '@cron-saas/database';
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import { CreateStatusPageDto } from './dto/create-status-page.dto';
 import { UpdateStatusPageDto } from './dto/update-status-page.dto';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 
 @Injectable()
 export class StatusPagesService {
   private readonly logger = new Logger(StatusPagesService.name);
+
+  constructor(private readonly entitlementsService: EntitlementsService) {}
 
   private generateSlug(title: string): string {
     const base = title
@@ -18,6 +21,8 @@ export class StatusPagesService {
   }
 
   async create(organizationId: string, dto: CreateStatusPageDto) {
+    await this.entitlementsService.assertCanCreateStatusPage(organizationId);
+
     const slug = dto.slug?.trim() || this.generateSlug(dto.title);
 
     const [page] = await db

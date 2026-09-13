@@ -213,6 +213,84 @@ async function runStartupMigrations(logger: Logger) {
     await client`CREATE INDEX IF NOT EXISTS status_pages_org_idx ON status_pages (organization_id)`;
     await client`CREATE INDEX IF NOT EXISTS status_pages_slug_idx ON status_pages (slug)`;
 
+    // ── 9. gumroad_accounts ──────────────────────────────────────────────────
+    await client`
+      CREATE TABLE IF NOT EXISTS gumroad_accounts (
+        id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id                 UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        organization_id         UUID REFERENCES organizations(id) ON DELETE CASCADE,
+        gumroad_product_id      VARCHAR(128),
+        gumroad_subscription_id VARCHAR(128),
+        gumroad_license_key     VARCHAR(255) UNIQUE,
+        purchase_email          VARCHAR(255),
+        customer_name           VARCHAR(255),
+        product_name            VARCHAR(255),
+        permalink               VARCHAR(255),
+        price_cents             INTEGER NOT NULL DEFAULT 0,
+        status                  VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+        purchase_date           TIMESTAMPTZ,
+        renewal_date            TIMESTAMPTZ,
+        cancellation_date       TIMESTAMPTZ,
+        ended_date              TIMESTAMPTZ,
+        last_synced_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        raw_payload             JSONB,
+        created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await client`CREATE INDEX IF NOT EXISTS gumroad_accounts_user_idx ON gumroad_accounts (user_id)`;
+    await client`CREATE INDEX IF NOT EXISTS gumroad_accounts_email_idx ON gumroad_accounts (purchase_email)`;
+
+    // ── 10. subscriptions ────────────────────────────────────────────────────
+    await client`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id                 UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+        organization_id         UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE UNIQUE,
+        plan                    VARCHAR(32) NOT NULL DEFAULT 'FREE',
+        billing_status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+        gumroad_account_id      UUID REFERENCES gumroad_accounts(id) ON DELETE SET NULL,
+        gumroad_product_id      VARCHAR(128),
+        gumroad_subscription_id VARCHAR(128),
+        gumroad_license_key     VARCHAR(255) UNIQUE,
+        gumroad_status          VARCHAR(32),
+        subscribed_since        TIMESTAMPTZ,
+        expires_at              TIMESTAMPTZ,
+        last_synced_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await client`CREATE INDEX IF NOT EXISTS subscriptions_user_idx ON subscriptions (user_id)`;
+    await client`CREATE INDEX IF NOT EXISTS subscriptions_org_idx ON subscriptions (organization_id)`;
+
+    // ── 11. gumroad_sync_logs ────────────────────────────────────────────────
+    await client`
+      CREATE TABLE IF NOT EXISTS gumroad_sync_logs (
+        id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id                 UUID REFERENCES users(id) ON DELETE SET NULL,
+        event_type              VARCHAR(64) NOT NULL,
+        status                  VARCHAR(32) NOT NULL,
+        gumroad_subscription_id VARCHAR(128),
+        license_key             VARCHAR(255),
+        details                 JSONB,
+        error_message           TEXT,
+        created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await client`CREATE INDEX IF NOT EXISTS gumroad_sync_logs_user_idx ON gumroad_sync_logs (user_id)`;
+    await client`CREATE INDEX IF NOT EXISTS gumroad_sync_logs_created_idx ON gumroad_sync_logs (created_at DESC)`;
+
+    // ── 12. system_settings ──────────────────────────────────────────────────
+    await client`
+      CREATE TABLE IF NOT EXISTS system_settings (
+        key         VARCHAR(64) PRIMARY KEY,
+        value       JSONB NOT NULL,
+        updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_by  VARCHAR(255)
+      )
+    `;
+
     logger.log('✓ Startup schema bootstrap complete — all tables & columns verified');
   } catch (err: any) {
     logger.error(`✗ Startup migration error: ${err.message}`);
