@@ -1,15 +1,27 @@
-import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger, OnModuleInit } from '@nestjs/common';
 import { db, statusPages, cronJobs, cronJobRuns } from '@cron-saas/database';
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import { sql, eq, and, desc, inArray } from 'drizzle-orm';
 import { CreateStatusPageDto } from './dto/create-status-page.dto';
 import { UpdateStatusPageDto } from './dto/update-status-page.dto';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 
 @Injectable()
-export class StatusPagesService {
+export class StatusPagesService implements OnModuleInit {
   private readonly logger = new Logger(StatusPagesService.name);
 
   constructor(private readonly entitlementsService: EntitlementsService) {}
+
+  async onModuleInit() {
+    try {
+      this.logger.log('Checking status_pages table schema integrity...');
+      await db.execute(sql`ALTER TABLE status_pages ADD COLUMN IF NOT EXISTS config jsonb DEFAULT '{}'::jsonb;`);
+      await db.execute(sql`ALTER TABLE status_pages ADD COLUMN IF NOT EXISTS monitored_job_ids jsonb DEFAULT '[]'::jsonb;`);
+      await db.execute(sql`ALTER TABLE status_pages ADD COLUMN IF NOT EXISTS incidents jsonb DEFAULT '[]'::jsonb;`);
+      this.logger.log('status_pages table schema integrity verified');
+    } catch (error) {
+      this.logger.warn('Error verifying status_pages schema column integrity', error);
+    }
+  }
 
   private generateSlug(title: string): string {
     const base = title
@@ -67,21 +79,29 @@ export class StatusPagesService {
   }
 
   async list(organizationId: string) {
-    const pages = await db
-      .select()
-      .from(statusPages)
-      .where(eq(statusPages.organizationId, organizationId))
-      .orderBy(desc(statusPages.createdAt));
+    try {
+      const pages = await db
+        .select()
+        .from(statusPages)
+        .where(eq(statusPages.organizationId, organizationId))
+        .orderBy(desc(statusPages.createdAt));
 
-    // For each page, attach monitor count and active incident count
-    return pages.map((p) => ({
-      ...p,
-      monitorCount: Array.isArray(p.monitoredJobIds) ? p.monitoredJobIds.length : 0,
-      activeIncidentsCount: Array.isArray(p.incidents)
-        ? p.incidents.filter((inc) => inc.status !== 'RESOLVED').length
-        : 0,
-      publicUrl: `/status/${p.slug}`,
-    }));
+      // For each page, attach monitor count and active incident count
+      return pages.map((p) => ({
+        ...p,
+        config: p.config || {},
+        monitoredJobIds: p.monitoredJobIds || [],
+        incidents: p.incidents || [],
+        monitorCount: Array.isArray(p.monitoredJobIds) ? p.monitoredJobIds.length : 0,
+        activeIncidentsCount: Array.isArray(p.incidents)
+          ? p.incidents.filter((inc) => inc.status !== 'RESOLVED').length
+          : 0,
+        publicUrl: `/status/${p.slug}`,
+      }));
+    } catch (error) {
+      this.logger.error(`Error listing status pages for organization ${organizationId}:`, error);
+      return [];
+    }
   }
 
   async getOne(id: string, organizationId: string) {
