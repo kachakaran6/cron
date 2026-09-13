@@ -65,7 +65,10 @@ export default function AppShell() {
     badge?: string;
   }
 
-  const isAdmin = user?.role === 'admin' || user?.email?.toLowerCase() === 'kachakaran6@gmail.com';
+  const isAdmin =
+    user?.role === 'admin' ||
+    user?.email?.toLowerCase() === 'kachakaran6@gmail.com' ||
+    user?.email?.toLowerCase() === 'kachakaran06@gmail.com';
 
   const baseNavItems: NavItem[] = [
     { label: 'Overview', to: '/dashboard', icon: LayoutGrid, exact: true },

@@ -8,6 +8,7 @@ import { db, users, organizations } from '@cron-saas/database';
 import { eq } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
+import { isPlatformAdmin, getPublicAppUrl } from './auth-url.util';
 
 export interface JwtPayload {
   sub: string;
@@ -40,7 +41,7 @@ export class AuthService {
 
   async register(name: string, email: string, password: string) {
     const normalized = email.toLowerCase().trim();
-    const role = normalized === 'kachakaran6@gmail.com' ? 'admin' : 'user';
+    const role = isPlatformAdmin(normalized) ? 'admin' : 'user';
 
     // Check if user already exists
     const [existing] = await db
@@ -106,9 +107,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Auto-upgrade kachakaran6@gmail.com to admin if role is user
+    // Auto-upgrade platform admins to admin if role is user
     let userRole = user.role;
-    if (normalized === 'kachakaran6@gmail.com' && userRole !== 'admin') {
+    if (isPlatformAdmin(normalized) && userRole !== 'admin') {
       await db.update(users).set({ role: 'admin' }).where(eq(users.id, user.id));
       userRole = 'admin';
     }
@@ -133,6 +134,9 @@ export class AuthService {
         })
         .returning();
       org = newOrg;
+    } else if (userRole === 'admin' && org.planId !== 'enterprise') {
+      await db.update(organizations).set({ planId: 'enterprise' }).where(eq(organizations.id, org.id));
+      org.planId = 'enterprise';
     }
 
     const token = this.signToken({ sub: user.id, email: user.email, orgId: org.id, role: userRole });
@@ -153,7 +157,7 @@ export class AuthService {
 
     if (!user) throw new UnauthorizedException('User not found');
 
-    if (user.email.toLowerCase() === 'kachakaran6@gmail.com' && user.role !== 'admin') {
+    if (isPlatformAdmin(user.email) && user.role !== 'admin') {
       await db.update(users).set({ role: 'admin' }).where(eq(users.id, user.id));
       user = { ...user, role: 'admin' };
     }
@@ -176,6 +180,9 @@ export class AuthService {
         })
         .returning();
       org = newOrg;
+    } else if (user.role === 'admin' && org.planId !== 'enterprise') {
+      await db.update(organizations).set({ planId: 'enterprise' }).where(eq(organizations.id, org.id));
+      org.planId = 'enterprise';
     }
 
     return {
@@ -194,7 +201,8 @@ export class AuthService {
     const normalized = dto.email.toLowerCase().trim();
     let [user] = await db.select().from(users).where(eq(users.email, normalized)).limit(1);
 
-    const role = normalized === 'kachakaran6@gmail.com' ? 'admin' : (user?.role || 'user');
+    const isAdmin = isPlatformAdmin(normalized);
+    const role = isAdmin ? 'admin' : (user?.role || 'user');
 
     if (!user) {
       const [newUser] = await db
@@ -211,16 +219,18 @@ export class AuthService {
         .returning();
       user = newUser;
     } else {
+      const newRole = isAdmin ? 'admin' : user.role;
       await db
         .update(users)
         .set({
           provider: dto.provider,
           providerId: dto.providerId || user.providerId,
-          role,
+          role: newRole,
           image: dto.image || user.image,
           updatedAt: new Date(),
         })
         .where(eq(users.id, user.id));
+      user.role = newRole;
     }
 
     let [org] = await db
@@ -237,13 +247,16 @@ export class AuthService {
           name: `${user.name || 'Personal'}'s Organization`,
           slug,
           ownerId: user.id,
-          planId: role === 'admin' ? 'enterprise' : 'free',
+          planId: user.role === 'admin' ? 'enterprise' : 'free',
         })
         .returning();
       org = newOrg;
+    } else if (user.role === 'admin' && org.planId !== 'enterprise') {
+      await db.update(organizations).set({ planId: 'enterprise' }).where(eq(organizations.id, org.id));
+      org.planId = 'enterprise';
     }
 
-    const token = this.signToken({ sub: user.id, email: user.email, orgId: org.id, role });
+    const token = this.signToken({ sub: user.id, email: user.email, orgId: org.id, role: user.role });
 
     return {
       token,
@@ -268,14 +281,17 @@ export class AuthService {
     return process.env.GITHUB_CLIENT_SECRET || '';
   }
 
-  getGoogleAuthUrl(): string {
-    const redirectUri = `${process.env.APP_PUBLIC_URL || 'https://cron.samast.pro'}/api/v1/auth/google/callback`;
+  getGoogleAuthUrl(state?: string, req?: any): string {
+    const publicUrl = getPublicAppUrl(req);
+    const redirectUri = `${publicUrl}/api/v1/auth/google/callback`;
     const clientId = this.googleClientId;
-    return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent('openid email profile')}&access_type=offline&prompt=consent`;
+    const stateParam = state ? `&state=${encodeURIComponent(state)}` : '';
+    return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent('openid email profile')}&access_type=offline&prompt=consent${stateParam}`;
   }
 
-  async handleGoogleCallback(code: string) {
-    const redirectUri = `${process.env.APP_PUBLIC_URL || 'https://cron.samast.pro'}/api/v1/auth/google/callback`;
+  async handleGoogleCallback(code: string, req?: any) {
+    const publicUrl = getPublicAppUrl(req);
+    const redirectUri = `${publicUrl}/api/v1/auth/google/callback`;
     const clientId = this.googleClientId;
     const clientSecret = this.googleClientSecret;
 
@@ -314,14 +330,17 @@ export class AuthService {
     });
   }
 
-  getGithubAuthUrl(): string {
-    const redirectUri = `${process.env.APP_PUBLIC_URL || 'https://cron.samast.pro'}/api/v1/auth/github/callback`;
+  getGithubAuthUrl(state?: string, req?: any): string {
+    const publicUrl = getPublicAppUrl(req);
+    const redirectUri = `${publicUrl}/api/v1/auth/github/callback`;
     const clientId = this.githubClientId;
-    return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email`;
+    const stateParam = state ? `&state=${encodeURIComponent(state)}` : '';
+    return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email${stateParam}`;
   }
 
-  async handleGithubCallback(code: string) {
-    const redirectUri = `${process.env.APP_PUBLIC_URL || 'https://cron.samast.pro'}/api/v1/auth/github/callback`;
+  async handleGithubCallback(code: string, req?: any) {
+    const publicUrl = getPublicAppUrl(req);
+    const redirectUri = `${publicUrl}/api/v1/auth/github/callback`;
     const clientId = this.githubClientId;
     const clientSecret = this.githubClientSecret;
 

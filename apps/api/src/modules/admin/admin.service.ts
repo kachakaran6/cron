@@ -4,6 +4,7 @@ import { eq, sql, count, desc, gte, lte, and, inArray } from 'drizzle-orm';
 import { FileLoggerService } from '../../common/logger/file-logger.service';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isPlatformAdmin } from '../auth/auth-url.util';
 
 export interface SystemRuntimeConfig {
   workerConcurrency: number;
@@ -310,7 +311,7 @@ export class AdminService {
     const [user] = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
     if (!user) throw new NotFoundException('User not found');
 
-    if (user.email.toLowerCase() === 'kachakaran6@gmail.com') {
+    if (isPlatformAdmin(user.email)) {
       throw new NotFoundException('Cannot delete primary system developer admin account');
     }
 

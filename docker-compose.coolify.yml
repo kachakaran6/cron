@@ -11,7 +11,7 @@ services:
     expose:
       - '80'
     labels:
-      - "caddy=https://cron.samast.pro, http://cron.samast.pro, http://cron.3.110.164.62.sslip.io, http://3.110.164.62"
+      - "caddy=https://cron.samast.pro, http://cron.samast.pro, http://cron-saas.3.110.164.62.sslip.io, https://cron-saas.3.110.164.62.sslip.io, http://cron.3.110.164.62.sslip.io, http://3.110.164.62"
       - "caddy.reverse_proxy={{upstreams 80}}"
       - "caddy.networks=coolify"
     healthcheck:
@@ -48,6 +48,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-kachakaran6@gmail.com,kachakaran06@gmail.com}
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:4000/api/v1/health || exit 1"]
       interval: 15s

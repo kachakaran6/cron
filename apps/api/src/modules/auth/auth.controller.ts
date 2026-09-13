@@ -16,6 +16,7 @@ import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { getFrontendUrl } from './auth-url.util';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -37,40 +38,60 @@ export class AuthController {
 
   @Get('google')
   @ApiOperation({ summary: 'Redirect to Google OAuth consent screen' })
-  async googleRedirect(@Res() res: Response) {
-    const url = this.authService.getGoogleAuthUrl();
+  async googleRedirect(
+    @Query('origin') origin: string,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const state = origin || getFrontendUrl(req);
+    const url = this.authService.getGoogleAuthUrl(state, req);
     return res.redirect(url);
   }
 
   @Get('google/callback')
   @ApiOperation({ summary: 'Handle Google OAuth callback code' })
-  async googleCallback(@Query('code') code: string, @Res() res: Response) {
+  async googleCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
     try {
-      const result = await this.authService.handleGoogleCallback(code);
-      const frontendUrl = process.env.FRONTEND_URL || 'https://cron.samast.pro';
+      const result = await this.authService.handleGoogleCallback(code, req);
+      const frontendUrl = getFrontendUrl(req, state);
       return res.redirect(`${frontendUrl}/oauth-callback?token=${result.token}`);
     } catch (err: any) {
-      const frontendUrl = process.env.FRONTEND_URL || 'https://cron.samast.pro';
+      const frontendUrl = getFrontendUrl(req, state);
       return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(err.message || 'Google OAuth failed')}`);
     }
   }
 
   @Get('github')
   @ApiOperation({ summary: 'Redirect to GitHub OAuth consent screen' })
-  async githubRedirect(@Res() res: Response) {
-    const url = this.authService.getGithubAuthUrl();
+  async githubRedirect(
+    @Query('origin') origin: string,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const state = origin || getFrontendUrl(req);
+    const url = this.authService.getGithubAuthUrl(state, req);
     return res.redirect(url);
   }
 
   @Get('github/callback')
   @ApiOperation({ summary: 'Handle GitHub OAuth callback code' })
-  async githubCallback(@Query('code') code: string, @Res() res: Response) {
+  async githubCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
     try {
-      const result = await this.authService.handleGithubCallback(code);
-      const frontendUrl = process.env.FRONTEND_URL || 'https://cron.samast.pro';
+      const result = await this.authService.handleGithubCallback(code, req);
+      const frontendUrl = getFrontendUrl(req, state);
       return res.redirect(`${frontendUrl}/oauth-callback?token=${result.token}`);
     } catch (err: any) {
-      const frontendUrl = process.env.FRONTEND_URL || 'https://cron.samast.pro';
+      const frontendUrl = getFrontendUrl(req, state);
       return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(err.message || 'GitHub OAuth failed')}`);
     }
   }

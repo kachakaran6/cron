@@ -31,7 +31,8 @@ export default function RegisterPage() {
   };
 
   const handleOAuth = (provider: 'google' | 'github') => {
-    window.location.href = `/api/v1/auth/${provider}`;
+    const origin = window.location.origin;
+    window.location.href = `/api/v1/auth/${provider}?origin=${encodeURIComponent(origin)}`;
   };
 
   return (

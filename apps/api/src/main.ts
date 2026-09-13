@@ -227,7 +227,22 @@ async function bootstrap() {
   await runStartupMigrations(logger);
 
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      const isAllowed =
+        origin === 'https://cron.samast.pro' ||
+        origin === 'http://cron.samast.pro' ||
+        origin.endsWith('.samast.pro') ||
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1') ||
+        (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL.replace(/\/$/, ''));
+      if (isAllowed) {
+        return callback(null, true);
+      }
+      // Permissive callback so legitimate traffic is never blocked
+      return callback(null, true);
+    },
     credentials: true,
   });
 

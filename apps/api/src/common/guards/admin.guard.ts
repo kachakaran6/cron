@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { db, users } from '@cron-saas/database';
 import { eq } from 'drizzle-orm';
+import { isPlatformAdmin } from '../../modules/auth/auth-url.util';
 
 @Injectable()
 export class AdminGuard implements CanActivate {
@@ -22,13 +23,13 @@ export class AdminGuard implements CanActivate {
       throw new UnauthorizedException('User not found');
     }
 
-    // Auto-promote kachakaran6@gmail.com if not already admin
-    if (user.email.toLowerCase() === 'kachakaran6@gmail.com' && user.role !== 'admin') {
+    // Auto-promote platform admins if not already admin
+    if (isPlatformAdmin(user.email) && user.role !== 'admin') {
       await db.update(users).set({ role: 'admin' }).where(eq(users.id, user.id));
       user.role = 'admin';
     }
 
-    if (user.role !== 'admin') {
+    if (user.role !== 'admin' && !isPlatformAdmin(user.email)) {
       throw new ForbiddenException('Access denied: Developer Admin privileges required');
     }
 
