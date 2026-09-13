@@ -41,6 +41,7 @@ export default function SchedulesListPage() {
   });
 
   const isPro = subscription?.isPro ?? false;
+  const planName = subscription?.planName || (isPro ? 'Pro Platform' : 'Free Starter');
   const maxJobs = subscription?.capabilities?.maxJobs ?? (isPro ? 500 : 5);
   const currentJobsCount = jobs?.length || 0;
   const isAtLimit = !isPro && currentJobsCount >= maxJobs;
@@ -104,7 +105,7 @@ export default function SchedulesListPage() {
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
               }`}
             >
-              {currentJobsCount} / {maxJobs} jobs used ({isPro ? 'Pro Platform' : 'Free Starter'})
+              {currentJobsCount} / {maxJobs.toLocaleString()} jobs used ({planName})
             </span>
           </div>
           <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">Manage scheduled HTTP requests and monitor their execution.</p>

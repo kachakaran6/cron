@@ -235,12 +235,23 @@ export class BillingService {
         .limit(1);
     }
 
-    const isPro = sub?.plan === 'PRO';
-    const isGracePeriod = sub?.gumroadStatus === 'CANCELLED' && isPro;
     const capabilities = await this.entitlementsService.getCapabilities(organizationId);
+    const activePlan = capabilities.plan || 'FREE';
+    const isPro = activePlan !== 'FREE';
+    const isGracePeriod = sub?.gumroadStatus === 'CANCELLED' && isPro;
+
+    const planName =
+      activePlan === 'ENTERPRISE'
+        ? 'Enterprise Dedicated'
+        : activePlan === 'ANNUAL'
+        ? 'Annual Pass'
+        : activePlan === 'PRO'
+        ? 'Pro Platform'
+        : 'Free Starter';
 
     return {
-      plan: sub?.plan || 'FREE',
+      plan: activePlan,
+      planName,
       billingStatus: sub?.billingStatus || 'ACTIVE',
       gumroadStatus: sub?.gumroadStatus || null,
       isPro,

@@ -350,7 +350,8 @@ export async function deleteAdminUser(userId: string): Promise<{ success: boolea
 // ── Billing & Gumroad API ──────────────────────────────────────────────────
 
 export interface UserSubscriptionDTO {
-  plan: 'FREE' | 'PRO';
+  plan: string;
+  planName?: string;
   billingStatus: string;
   gumroadStatus: string | null;
   isPro: boolean;
