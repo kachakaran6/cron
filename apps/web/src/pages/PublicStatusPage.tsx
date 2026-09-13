@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, AlertTriangle, XCircle, Clock, ExternalLink, Activity, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { fetchPublicStatusPage } from '../services/api';
+import { Footer } from '../components/layout/Footer';
 
 export default function PublicStatusPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -252,15 +253,9 @@ export default function PublicStatusPage() {
         </section>
 
         {/* Footer */}
-        <footer className="pt-8 border-t border-zinc-200 dark:border-zinc-800 text-center text-xs text-zinc-500 dark:text-zinc-400 space-y-2">
-          <p>
-            Powered by{' '}
-            <Link to="/" className="font-semibold text-zinc-800 dark:text-zinc-200 hover:underline">
-              Samast Cron Infrastructure
-            </Link>
-          </p>
-          <p className="text-[11px] font-mono">Real-time distributed status monitoring</p>
-        </footer>
+        <div className="pt-8">
+          <Footer dark={true} />
+        </div>
       </main>
     </div>
   );

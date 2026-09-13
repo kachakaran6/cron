@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Lock, Mail, ArrowRight, Sun, Moon, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Footer } from '../components/layout/Footer';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -183,6 +184,9 @@ export default function LoginPage() {
             </Link>
           </div>
         </div>
+      </div>
+      <div className="w-full mt-12">
+        <Footer dark={theme === 'dark'} />
       </div>
     </div>
   );

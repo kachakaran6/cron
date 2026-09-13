@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { Footer } from '../components/layout/Footer';
 
 const CURL_SNIPPET = `curl -X POST https://cron.samast.pro/api/v1/jobs \\
   -H "X-API-Key: cr_live_••••••••••••••••••••••••" \\
@@ -463,25 +464,7 @@ export default function LandingPage() {
       </main>
 
       {/* ── Footer ────────────────────────────────────────────────── */}
-      <footer className={`border-t py-8 px-4 sm:px-6 text-xs ${dark ? 'border-zinc-800 bg-zinc-950 text-zinc-500' : 'border-zinc-100 bg-zinc-50 text-zinc-400'}`}>
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-          <div className="flex items-center gap-2">
-            <div 
-              style={{ backgroundColor: 'var(--accent)' }}
-              className="w-5 h-5 rounded flex items-center justify-center font-mono font-bold text-[10px] text-white"
-            >
-              SC
-            </div>
-            <span>Samast Cron — Scheduled HTTP Infrastructure</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
-            <Link to="/docs" className="hover:text-zinc-300 transition-colors">Documentation</Link>
-            <a href="/api/docs" target="_blank" rel="noreferrer" className="hover:text-zinc-300 transition-colors">OpenAPI</a>
-            <Link to="/privacy" className="hover:text-zinc-300 transition-colors">Privacy</Link>
-            <Link to="/terms" className="hover:text-zinc-300 transition-colors">Terms</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer dark={dark} />
     </div>
   );
 }
