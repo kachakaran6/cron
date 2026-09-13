@@ -5,6 +5,6 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://cron_user:super_secure_postgres_pass_2026@localhost:5432/cron_saas',
+    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/cron_saas',
   },
 });
