@@ -150,7 +150,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   required
-                  placeholder="kachakaran@gmail.com"
+                  placeholder="admin@samast.pro"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={`pl-9 pr-3 py-2 w-full text-xs rounded border focus-ring ${theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-zinc-100' : 'bg-zinc-50 border-zinc-300 text-zinc-900'

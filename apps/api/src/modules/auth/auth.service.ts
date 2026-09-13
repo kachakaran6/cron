@@ -8,7 +8,7 @@ import { db, users, organizations } from '@cron-saas/database';
 import { eq } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
-import { isPlatformAdmin, getPublicAppUrl } from './auth-url.util';
+import { isPlatformAdmin, getPublicAppUrl, cleanEnv } from './auth-url.util';
 
 export interface JwtPayload {
   sub: string;
@@ -24,7 +24,7 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   private get jwtSecret(): string {
-    return process.env.JWT_SECRET || 'samast_cron_jwt_secret_change_in_production_2026';
+    return cleanEnv(process.env.JWT_SECRET) || 'samast_cron_jwt_secret_change_in_production_2026';
   }
 
   signToken(payload: Omit<JwtPayload, 'iat' | 'exp'>): string {

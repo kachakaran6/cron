@@ -21,6 +21,18 @@ export function sanitizeUrl(url?: string | null): string | null {
   return trimmed;
 }
 
+export function cleanEnv(val?: string | null): string {
+  if (!val) return '';
+  let cleaned = val.trim();
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  return cleaned;
+}
+
 export function ensureHttpsForProduction(url: string): string {
   if (!url) return 'https://cron.samast.pro';
   if (url.includes('localhost') || url.includes('127.0.0.1')) {
@@ -117,6 +129,7 @@ export function isPlatformAdmin(email?: string | null): boolean {
 
   // Master administrator emails
   const hardcodedAdmins = [
+    'kachakaran@gmail.com',
     'kachakaran6@gmail.com',
     'kachakaran06@gmail.com',
   ];

@@ -803,7 +803,7 @@ export default function AdminDashboardPage() {
                                 {u.role === 'admin' ? 'Demote' : 'Promote'}
                               </button>
 
-                              {!['kachakaran6@gmail.com', 'kachakaran06@gmail.com'].includes(u.email?.toLowerCase()) && (
+                              {!['kachakaran@gmail.com', 'kachakaran6@gmail.com', 'kachakaran06@gmail.com'].includes(u.email?.toLowerCase()) && (
                                 <button
                                   onClick={() => setUserToDelete(u)}
                                   className="px-2.5 py-1 text-xs rounded-md font-medium border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition-colors"

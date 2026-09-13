@@ -67,6 +67,7 @@ export default function AppShell() {
 
   const isAdmin =
     user?.role === 'admin' ||
+    user?.email?.toLowerCase() === 'kachakaran@gmail.com' ||
     user?.email?.toLowerCase() === 'kachakaran6@gmail.com' ||
     user?.email?.toLowerCase() === 'kachakaran06@gmail.com';
 

@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   oauthLogin: (data: { provider: 'google' | 'github'; email: string; name?: string; providerId?: string; image?: string }) => Promise<void>;
+  loginWithToken: (token: string) => Promise<User>;
   logout: () => void;
 }
 
@@ -64,13 +65,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser({ id: data.user.id, email: data.user.email, name: data.user.name, role: data.user.role });
   }, []);
 
+  const loginWithToken = useCallback(async (token: string): Promise<User> => {
+    setAuthToken(token);
+    try {
+      const data = await apiGetMe();
+      const userData: User = { id: data.user.id, email: data.user.email, name: data.user.name, role: data.user.role };
+      setUser(userData);
+      setIsLoading(false);
+      return userData;
+    } catch (err) {
+      clearAuthToken();
+      setUser(null);
+      setIsLoading(false);
+      throw err;
+    }
+  }, []);
+
   const logout = useCallback(() => {
     clearAuthToken();
     setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, oauthLogin, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, oauthLogin, loginWithToken, logout }}>
       {children}
     </AuthContext.Provider>
   );

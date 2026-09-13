@@ -48,7 +48,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
-      ADMIN_EMAILS: ${ADMIN_EMAILS:-kachakaran6@gmail.com,kachakaran06@gmail.com}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-kachakaran@gmail.com,kachakaran6@gmail.com,kachakaran06@gmail.com}
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:4000/api/v1/health || exit 1"]
       interval: 15s

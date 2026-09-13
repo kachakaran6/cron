@@ -38,7 +38,13 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
   if (res.status === 401) {
     clearAuthToken();
-    window.location.href = '/login';
+    if (
+      !window.location.pathname.includes('/login') &&
+      !window.location.pathname.includes('/register') &&
+      !window.location.pathname.includes('/oauth-callback')
+    ) {
+      window.location.href = '/login?error=' + encodeURIComponent('Your session has expired. Please sign in again.');
+    }
     throw new Error('Session expired');
   }
 

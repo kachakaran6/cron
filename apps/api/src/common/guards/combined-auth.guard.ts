@@ -3,6 +3,7 @@ import * as crypto from 'node:crypto';
 import * as jwt from 'jsonwebtoken';
 import { db, apiKeys, organizations } from '@cron-saas/database';
 import { eq } from 'drizzle-orm';
+import { cleanEnv } from '../../modules/auth/auth-url.util';
 
 /**
  * CombinedAuthGuard
@@ -49,7 +50,7 @@ export class CombinedAuthGuard implements CanActivate {
     const bearerToken = this.extractBearer(authorizationHeader);
     if (bearerToken && !bearerToken.startsWith('cr_live_')) {
       try {
-        const jwtSecret = process.env.JWT_SECRET || 'samast_cron_jwt_secret_change_in_production_2026';
+        const jwtSecret = cleanEnv(process.env.JWT_SECRET) || 'samast_cron_jwt_secret_change_in_production_2026';
         const payload = jwt.verify(bearerToken, jwtSecret) as any;
         req.userId = payload.sub;
         req.userEmail = payload.email;
