@@ -243,6 +243,25 @@ export default function ResponsePreviewModal({ log, onClose }: ResponsePreviewMo
   const executedTime = log.executedAt || log.startedAt || new Date().toISOString();
   const duration = log.responseTime || log.durationMs || 0;
 
+  // Prepare HTML preview document by injecting target origin base tag for relative CSS/images
+  const preparedHtmlDoc = useMemo(() => {
+    if (!rawBody) return '';
+    if (!log.jobUrl || (!log.jobUrl.startsWith('http://') && !log.jobUrl.startsWith('https://'))) {
+      return rawBody;
+    }
+    try {
+      const parsedUrl = new URL(log.jobUrl);
+      const baseUrl = parsedUrl.origin;
+      const baseTag = `<base href="${baseUrl}/">`;
+      if (/<head[^>]*>/i.test(rawBody)) {
+        return rawBody.replace(/<head[^>]*>/i, `$&\n  ${baseTag}`);
+      }
+      return `<!DOCTYPE html><html><head>${baseTag}</head><body>${rawBody}</body></html>`;
+    } catch {
+      return rawBody;
+    }
+  }, [rawBody, log.jobUrl]);
+
   // Dynamically compute relevant formats so HTML doesn't clutter with IMAGE/VIDEO options unless requested
   const smartFormats = useMemo<ResponseFormat[]>(() => {
     if (showAllFormats) {
@@ -504,14 +523,14 @@ export default function ResponsePreviewModal({ log, onClose }: ResponsePreviewMo
                       Copy HTML Code
                     </button>
                   </div>
-                  <div className="flex-1 min-h-[380px] border border-zinc-300 dark:border-zinc-800 rounded-lg overflow-hidden bg-white shadow-inner">
-                    <iframe
-                      title="HTML Response Rendered Preview"
-                      srcDoc={rawBody}
-                      sandbox="allow-same-origin allow-scripts"
-                      className="w-full h-full min-h-[380px] bg-white"
-                    />
-                  </div>
+                    <div className="flex-1 min-h-[400px] border border-zinc-300 dark:border-zinc-800 rounded-lg overflow-hidden bg-white shadow-inner">
+                      <iframe
+                        title="HTML Response Rendered Preview"
+                        srcDoc={preparedHtmlDoc}
+                        sandbox="allow-same-origin allow-scripts"
+                        className="w-full h-full min-h-[400px] bg-white border-0"
+                      />
+                    </div>
                 </div>
               )}
 
