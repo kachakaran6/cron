@@ -107,7 +107,7 @@ export default function AppShell() {
   return (
     <div className="h-screen overflow-hidden flex flex-col font-sans transition-colors bg-slate-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 selection:bg-zinc-300 dark:selection:bg-zinc-800">
       {/* Compact Header Bar */}
-      <header className="h-14 border-b px-3 sm:px-6 flex items-center justify-between flex-shrink-0 bg-white/95 dark:bg-zinc-950/95 backdrop-blur border-zinc-200 dark:border-zinc-800 shadow-xs z-30">
+      <header className="h-14 border-b px-3 sm:px-6 flex items-center justify-between flex-shrink-0 bg-white/95 dark:bg-zinc-950/95 backdrop-blur border-zinc-200 dark:border-zinc-800 shadow-xs z-20">
         <div className="flex items-center gap-3 sm:gap-4">
           {/* Mobile Hamburger Toggle */}
           <button

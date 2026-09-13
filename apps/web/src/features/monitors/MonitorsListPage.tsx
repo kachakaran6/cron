@@ -423,7 +423,7 @@ export default function MonitorsListPage() {
 
       {/* Status Page Editor Modal (Create / Edit) */}
       {(isCreating || editingPage) && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center p-4 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center p-4 z-[100] overflow-y-auto">
           <div className="w-full max-w-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 sm:p-6 space-y-6 shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">

@@ -243,7 +243,7 @@ export default function ResponsePreviewModal({ log, onClose }: ResponsePreviewMo
   const duration = log.responseTime || log.durationMs || 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
       <div
         className={`w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl flex flex-col transition-all duration-300 ${
           isFullscreen ? 'h-full max-w-none rounded-none' : 'max-w-4xl max-h-[90vh]'
