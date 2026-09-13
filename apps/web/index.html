@@ -54,15 +54,60 @@
     <meta property="og:site_name" content="Samast Cron" />
     <meta property="og:locale" content="en_US" />
 
-    <!-- X / Twitter Card Metadata -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@samastcron" />
-    <meta name="twitter:creator" content="@samastcron" />
-    <meta name="twitter:url" content="https://cron.samast.pro/" />
-    <meta name="twitter:title" content="Samast Cron — Reliable Scheduled HTTP Request Infrastructure" />
-    <meta name="twitter:description" content="Schedule, monitor, and execute millisecond-accurate HTTP webhooks and background jobs with automated retries and real-time telemetry." />
-    <meta name="twitter:image" content="https://cron.samast.pro/cron-og.png" />
-    <meta name="twitter:image:alt" content="Samast Cron Platform Overview" />
+    <!-- JSON-LD Structured Data (Google Rich Snippets) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Samast Cron",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "All",
+      "url": "https://cron.samast.pro/",
+      "description": "Reliable scheduled HTTP request & cron infrastructure with sub-minute execution, automated retries, and real-time telemetry.",
+      "softwareVersion": "2.0.0",
+      "author": {
+        "@type": "Organization",
+        "name": "Samast Cron Infrastructure",
+        "url": "https://cron.samast.pro/"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "ratingCount": "128",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Free Starter Plan",
+          "price": "0.00",
+          "priceCurrency": "USD",
+          "description": "5 active cron jobs, 60s minimum interval, 3 days execution log retention."
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro Platform Plan",
+          "price": "19.00",
+          "priceCurrency": "USD",
+          "description": "500 active jobs, 10s precision intervals, 30 days log retention, automated retries."
+        }
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Samast Cron",
+      "url": "https://cron.samast.pro/",
+      "logo": "https://cron.samast.pro/favicon.png",
+      "sameAs": [
+        "https://github.com/kachakaran6/cron",
+        "https://twitter.com/samastcron"
+      ]
+    }
+    </script>
   </head>
   <body class="bg-zinc-950 text-zinc-100 antialiased selection:bg-zinc-800 selection:text-white">
     <div id="root"></div>

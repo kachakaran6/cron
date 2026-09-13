@@ -12,6 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { Footer } from '../components/layout/Footer';
 import { fetchGumroadTiers } from '../services/api';
+import { SEOHead } from '../components/seo/SEOHead';
 
 const CURL_SNIPPET = `curl -X POST https://cron.samast.pro/api/v1/jobs \\
   -H "X-API-Key: cr_live_••••••••••••••••••••••••" \\
@@ -302,6 +303,11 @@ Thank you!`;
 
   return (
     <div className={`min-h-screen font-sans flex flex-col transition-colors ${dark ? 'bg-zinc-950 text-zinc-100' : 'bg-white text-zinc-900'}`}>
+      <SEOHead
+        title="Samast Cron — High-Frequency Cron Job Platform & Scheduled HTTP Infrastructure"
+        description="Trigger webhooks and APIs with sub-second precision down to 1-second intervals. Built with automated retries, payload signing, and failure alerts for engineers."
+        canonicalUrl="https://cron.samast.pro/"
+      />
 
       {/* ── Nav ─────────────────────────────────────────────────── */}
       <header className={`h-14 border-b px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 ${

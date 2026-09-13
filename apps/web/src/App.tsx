@@ -30,6 +30,8 @@ import NotFoundPage from './pages/NotFoundPage';
 
 import PricingPage from './pages/PricingPage';
 import BillingPage from './features/billing/BillingPage';
+import { CrontabGeneratorPage } from './pages/CrontabGeneratorPage';
+import { CompetitorComparisonPage } from './pages/CompetitorComparisonPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,6 +51,10 @@ export default function App() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/tools/crontab-generator" element={<CrontabGeneratorPage />} />
+              <Route path="/tools/cron-calculator" element={<CrontabGeneratorPage />} />
+              <Route path="/vs/:competitor" element={<CompetitorComparisonPage />} />
+              <Route path="/use-cases/:competitor" element={<CompetitorComparisonPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />

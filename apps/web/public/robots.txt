@@ -1,0 +1,33 @@
+# ========================================================
+# Samast Cron Robots.txt - Search Engine & AI Indexing Rules
+# ========================================================
+
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /docs
+Allow: /tools/
+Allow: /vs/
+Allow: /use-cases/
+
+# Disallow Private Authenticated App Routes from Indexing
+Disallow: /dashboard/
+Disallow: /register
+Disallow: /login
+Disallow: /api/
+
+# AI Search Engine Crawlers (ChatGPT, Perplexity, Claude, Applebot)
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Sitemap Index URL
+Sitemap: https://cron.samast.pro/sitemap.xml

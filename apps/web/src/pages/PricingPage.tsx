@@ -20,6 +20,7 @@ import {
 import { fetchGumroadTiers } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Footer from '../components/layout/Footer';
+import { SEOHead } from '../components/seo/SEOHead';
 
 export default function PricingPage() {
   const { user } = useAuth();
@@ -71,6 +72,11 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col">
+      <SEOHead
+        title="Pricing & Plans — Samast Cron | High-Frequency Cron Job Platform"
+        description="Simple, developer-friendly pricing for Samast Cron. Free Starter plan with 500 active jobs, or unlock sub-second 1s execution intervals and enterprise SLA."
+        canonicalUrl="https://cron.samast.pro/pricing"
+      />
       {/* Navigation Header */}
       <header className="border-b border-zinc-200 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">

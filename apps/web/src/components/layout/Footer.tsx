@@ -97,10 +97,44 @@ export const Footer: React.FC<FooterProps> = ({ dark = true }) => {
             </ul>
           </div>
 
-          {/* Col 3: Platform Resources */}
+          {/* Col 3: Free Tools & Comparisons (SEO High-Intent Hubs) */}
           <div className="space-y-3">
             <h3 className={`font-mono text-[11px] font-bold uppercase tracking-wider ${dark ? 'text-zinc-300' : 'text-zinc-700'}`}>
-              Platform & Docs
+              Free Developer Tools
+            </h3>
+            <ul className="space-y-2 font-medium">
+              <li>
+                <Link to="/tools/crontab-generator" className="hover:text-emerald-500 transition-colors">
+                  Crontab Expression Generator
+                </Link>
+              </li>
+              <li>
+                <Link to="/vs/easycron" className="hover:text-emerald-500 transition-colors">
+                  Samast Cron vs EasyCron
+                </Link>
+              </li>
+              <li>
+                <Link to="/vs/cron-job-org" className="hover:text-emerald-500 transition-colors">
+                  Samast Cron vs Cron-Job.org
+                </Link>
+              </li>
+              <li>
+                <Link to="/vs/aws-eventbridge" className="hover:text-emerald-500 transition-colors">
+                  Samast Cron vs AWS EventBridge
+                </Link>
+              </li>
+              <li>
+                <Link to="/docs" className="hover:text-emerald-500 transition-colors">
+                  Documentation &amp; API Spec
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 4: Platform & Legal */}
+          <div className="space-y-3">
+            <h3 className={`font-mono text-[11px] font-bold uppercase tracking-wider ${dark ? 'text-zinc-300' : 'text-zinc-700'}`}>
+              Platform &amp; Legal
             </h3>
             <ul className="space-y-2 font-medium">
               <li>
@@ -108,41 +142,6 @@ export const Footer: React.FC<FooterProps> = ({ dark = true }) => {
                   Pricing &amp; Plans
                 </Link>
               </li>
-              <li>
-                <Link to="/docs" className="hover:text-emerald-500 transition-colors">
-                  Documentation & Guides
-                </Link>
-              </li>
-              <li>
-                <a
-                  href="/api/docs"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 hover:text-emerald-500 transition-colors"
-                >
-                  <span>OpenAPI / Swagger Spec</span>
-                  <ExternalLink className="w-3 h-3 opacity-60" />
-                </a>
-              </li>
-              <li>
-                <Link to="/status/system-health" className="hover:text-emerald-500 transition-colors">
-                  Public Status Monitor
-                </Link>
-              </li>
-              <li>
-                <Link to="/dashboard" className="hover:text-emerald-500 transition-colors">
-                  Control Console
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 4: Legal & Security */}
-          <div className="space-y-3">
-            <h3 className={`font-mono text-[11px] font-bold uppercase tracking-wider ${dark ? 'text-zinc-300' : 'text-zinc-700'}`}>
-              Legal & Open Source
-            </h3>
-            <ul className="space-y-2 font-medium">
               <li>
                 <Link to="/privacy" className="hover:text-emerald-500 transition-colors">
                   Privacy Policy
