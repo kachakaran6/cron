@@ -179,8 +179,8 @@ export default function BillingPage() {
               </div>
               <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 max-w-md leading-relaxed">
                 {isPro
-                  ? 'Your account has full Pro privileges: 500 active jobs, 10-second high-precision execution intervals, and 30 days of execution logs.'
-                  : 'You are currently on the Free tier. Upgrade to unlock high-frequency crons (down to 10 seconds), 500 active schedules, and smart retry policies.'}
+                  ? 'Your workspace has full Pro privileges: 500 active jobs, 10-second high-precision execution intervals, and 30 days of execution logs.'
+                  : 'You are currently on the Free tier (5 active scheduled jobs, 60-second minimum execution interval, 3 days log retention). Upgrade to Pro to unlock 500 active jobs and 10-second precision.'}
               </p>
             </div>
 
