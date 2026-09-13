@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { SEOHead } from '../components/seo/SEOHead';
 import { PublicHeader } from '../components/layout/PublicHeader';
 import { Footer } from '../components/layout/Footer';
+import { useTheme } from '../context/ThemeContext';
 import { Check, X, ArrowRight, ShieldCheck, Zap, Sparkles, Building2, ExternalLink } from 'lucide-react';
 
 const COMPARISONS: Record<string, { title: string; subtitle: string; description: string; competitorName: string }> = {
@@ -28,6 +29,8 @@ const COMPARISONS: Record<string, { title: string; subtitle: string; description
 
 export function CompetitorComparisonPage() {
   const { competitor = 'easycron' } = useParams<{ competitor: string }>();
+  const { theme } = useTheme();
+  const dark = theme === 'dark';
 
   const info = COMPARISONS[competitor] || COMPARISONS.easycron;
 
@@ -42,7 +45,7 @@ export function CompetitorComparisonPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white flex flex-col justify-between">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white flex flex-col justify-between transition-colors">
       <SEOHead
         title={info.title}
         description={info.description}
@@ -52,10 +55,10 @@ export function CompetitorComparisonPage() {
 
       <PublicHeader />
 
-      <main className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full space-y-12">
+      <main className="pt-12 sm:pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full space-y-12">
         {/* Hero Section */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-xs font-semibold">
             <Zap className="w-3.5 h-3.5" />
             <span>Developer Comparison Hub • 2026 Edition</span>
           </div>
@@ -126,7 +129,7 @@ export function CompetitorComparisonPage() {
         </div>
       </main>
 
-      <Footer />
+      <Footer dark={dark} />
     </div>
   );
 }

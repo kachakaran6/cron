@@ -453,8 +453,15 @@ export default function MonitorsListPage() {
                   <span className="font-mono text-zinc-500">Quota: 1 / 2</span>
                 </div>
                 <div className="flex items-center justify-between text-xs font-mono text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-950 p-2.5 rounded border border-zinc-200 dark:border-zinc-800">
-                  <span>{slug || 'p2dxmk62'}.status.cron.samast.pro</span>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-sans font-semibold">SSL Active</span>
+                  <a
+                    href={`/status/${slug || 'test'}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono text-zinc-900 dark:text-zinc-100 hover:text-[var(--accent)] underline transition-colors"
+                  >
+                    https://cron.samast.pro/status/{slug || 'test'}
+                  </a>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-sans font-semibold shrink-0 ml-2">SSL Active</span>
                 </div>
               </div>
 

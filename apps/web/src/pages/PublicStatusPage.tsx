@@ -4,9 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, AlertTriangle, XCircle, Clock, ExternalLink, Activity, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { fetchPublicStatusPage } from '../services/api';
 import { Footer } from '../components/layout/Footer';
+import { useTheme } from '../context/ThemeContext';
+import { Sun, Moon } from 'lucide-react';
 
 export default function PublicStatusPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { theme, toggleTheme } = useTheme();
+  const dark = theme === 'dark';
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['public-status-page', slug],
@@ -69,6 +73,14 @@ export default function PublicStatusPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+              title="Toggle Theme"
+            >
+              {dark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+            </button>
             <span className="text-xs text-zinc-500 dark:text-zinc-400 hidden sm:inline">
               Updated {new Date(data.updatedAt).toLocaleTimeString()}
             </span>
@@ -251,12 +263,12 @@ export default function PublicStatusPage() {
             </div>
           )}
         </section>
-
-        {/* Footer */}
-        <div className="pt-8">
-          <Footer dark={true} />
-        </div>
       </main>
+
+      {/* Full Width Footer */}
+      <div className="mt-16 border-t border-zinc-200 dark:border-zinc-800/80">
+        <Footer dark={dark} />
+      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { SEOHead } from '../components/seo/SEOHead';
 import { PublicHeader } from '../components/layout/PublicHeader';
 import { Footer } from '../components/layout/Footer';
+import { useTheme } from '../context/ThemeContext';
 import { CodeBlock } from '../components/ui/CodeBlock';
 import { Clock, Play, Copy, Check, Sparkles, ArrowRight, ShieldCheck, Cpu, Terminal, Zap, ExternalLink } from 'lucide-react';
 
@@ -19,6 +20,8 @@ const PRESETS = [
 ];
 
 export function CrontabGeneratorPage() {
+  const { theme } = useTheme();
+  const dark = theme === 'dark';
   const [expression, setExpression] = useState('*/5 * * * *');
   const [copied, setCopied] = useState(false);
 
@@ -49,7 +52,7 @@ export function CrontabGeneratorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white flex flex-col justify-between">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white flex flex-col justify-between transition-colors">
       <SEOHead
         title="Free Crontab Generator & Cron Expression Parser — Samast Cron"
         description="Free online crontab generator and cron syntax humanizer. Parse, build, and test 5-field cron schedule expressions with next run times and SDK code generation."
@@ -59,18 +62,18 @@ export function CrontabGeneratorPage() {
 
       <PublicHeader />
 
-      <main className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full space-y-12">
+      <main className="pt-12 sm:pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full space-y-12">
         {/* Header */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Free Developer Tool • 100% Free Forever</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
             Crontab Generator &amp; Expression Parser
           </h1>
-          <p className="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
             Generate, validate, and humanize 5-field crontab schedule syntax instantly. Copy code snippets for Node.js, Python, cURL, and deploy reliably with <strong>Samast Cron</strong>.
           </p>
         </div>
@@ -189,7 +192,7 @@ export function CrontabGeneratorPage() {
         </div>
       </main>
 
-      <Footer />
+      <Footer dark={dark} />
     </div>
   );
 }
