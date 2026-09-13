@@ -14,7 +14,10 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
+  MessageCircle,
+  Globe,
 } from 'lucide-react';
+import { CustomSelect, SelectOption } from '../../components/ui/CustomSelect';
 import {
   fetchNotificationChannels,
   createNotificationChannel,
@@ -321,21 +324,21 @@ export default function NotificationsPage() {
                 <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Channel Type
                 </label>
-                <select
+                <CustomSelect
                   value={type}
-                  onChange={(e: any) => {
-                    setType(e.target.value);
+                  onChange={(val) => {
+                    setType(val as any);
                     setTarget('');
                     setPushoverAppToken('');
                   }}
-                  className="w-full px-2.5 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus-ring shadow-xs"
-                >
-                  <option value="email">Email Address</option>
-                  <option value="pushover">Pushover (Mobile / Desktop Push)</option>
-                  <option value="slack">Slack Webhook</option>
-                  <option value="discord">Discord Webhook</option>
-                  <option value="webhook">Custom HTTP Webhook</option>
-                </select>
+                  options={[
+                    { value: 'email', label: 'Email Address', icon: <Mail className="w-4 h-4 text-emerald-500" />, description: 'Direct email inbox notifications' },
+                    { value: 'pushover', label: 'Pushover (Mobile / Desktop Push)', icon: <Smartphone className="w-4 h-4 text-indigo-500" />, description: 'Real-time mobile & desktop push alerts' },
+                    { value: 'slack', label: 'Slack Webhook', icon: <MessageSquare className="w-4 h-4 text-emerald-500" />, description: 'Slack channel webhooks' },
+                    { value: 'discord', label: 'Discord Webhook', icon: <MessageCircle className="w-4 h-4 text-indigo-500" />, description: 'Discord server webhooks' },
+                    { value: 'webhook', label: 'Custom HTTP Webhook', icon: <Globe className="w-4 h-4 text-sky-500" />, description: 'HTTP POST JSON webhooks to your server' },
+                  ]}
+                />
               </div>
 
               {type === 'pushover' ? (

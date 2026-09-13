@@ -34,6 +34,7 @@ import {
   ArrowUpRight,
   TrendingUp,
 } from 'lucide-react';
+import { CustomSelect } from '../../components/ui/CustomSelect';
 import {
   fetchAdminStats,
   fetchAdminLogs,
@@ -794,24 +795,20 @@ export default function AdminDashboardPage() {
                               <div className="font-medium text-zinc-800 dark:text-zinc-200">
                                 {u.organization?.name || 'Personal'}
                               </div>
-                              <select
-                                value={u.planId || 'free'}
-                                disabled={planMutation.isPending}
-                                onChange={(e) =>
-                                  planMutation.mutate({ userId: u.id, planId: e.target.value })
-                                }
-                                className="mt-1 bg-white dark:bg-zinc-900 text-[11px] font-mono font-medium text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 rounded px-2 py-1 shadow-2xs focus:ring-1 focus:ring-[var(--accent)] cursor-pointer disabled:opacity-50"
-                              >
-                                <option value="free" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
-                                  Free Starter (5 jobs, 60s)
-                                </option>
-                                <option value="pro" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
-                                  Pro Platform (500 jobs, 10s)
-                                </option>
-                                <option value="annual" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
-                                  Annual Pass (1,000 jobs, 5s)
-                                </option>
-                              </select>
+                              <div className="mt-1 min-w-[200px]">
+                                <CustomSelect
+                                  value={u.planId || 'free'}
+                                  disabled={planMutation.isPending}
+                                  onChange={(val) =>
+                                    planMutation.mutate({ userId: u.id, planId: val })
+                                  }
+                                  options={[
+                                    { value: 'free', label: 'Free Starter (5 jobs, 60s)', badge: 'FREE' },
+                                    { value: 'pro', label: 'Pro Platform (500 jobs, 10s)', badge: 'PRO' },
+                                    { value: 'annual', label: 'Annual Pass (1,000 jobs, 5s)', badge: 'ANNUAL' },
+                                  ]}
+                                />
+                              </div>
                             </td>
 
                             <td className="px-4 py-3 font-mono font-semibold text-zinc-900 dark:text-zinc-100">

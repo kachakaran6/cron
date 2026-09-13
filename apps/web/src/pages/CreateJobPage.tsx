@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Send, Sparkles, Terminal, ShieldAlert } from 'lucide-react';
 import { createJob } from '../services/api';
+import { CustomSelect } from '../components/ui/CustomSelect';
 
 const PRESETS = [
   { label: 'Every 1 Min', expr: '* * * * *' },
@@ -95,17 +96,17 @@ export default function CreateJobPage() {
                 <label className="block text-xs font-mono font-bold text-zinc-400 uppercase tracking-wider mb-2">
                   Method
                 </label>
-                <select
+                <CustomSelect
                   value={method}
-                  onChange={(e: any) => setMethod(e.target.value)}
-                  className="w-full px-3 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-rose-400 focus:outline-none focus:border-rose-500 font-mono font-bold"
-                >
-                  <option>GET</option>
-                  <option>POST</option>
-                  <option>PUT</option>
-                  <option>PATCH</option>
-                  <option>DELETE</option>
-                </select>
+                  onChange={(val) => setMethod(val as any)}
+                  options={[
+                    { value: 'GET', label: 'GET' },
+                    { value: 'POST', label: 'POST' },
+                    { value: 'PUT', label: 'PUT' },
+                    { value: 'PATCH', label: 'PATCH' },
+                    { value: 'DELETE', label: 'DELETE' },
+                  ]}
+                />
               </div>
 
               <div className="col-span-3">

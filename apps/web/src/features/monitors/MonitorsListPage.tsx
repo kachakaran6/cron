@@ -15,6 +15,7 @@ import {
   Activity,
   X,
 } from 'lucide-react';
+import { CustomSelect } from '../../components/ui/CustomSelect';
 import {
   fetchStatusPages,
   createStatusPage,
@@ -483,16 +484,18 @@ export default function MonitorsListPage() {
                         onChange={(e) => setIncidentTitle(e.target.value)}
                         className="px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded text-xs"
                       />
-                      <select
-                        value={incidentStatus}
-                        onChange={(e: any) => setIncidentStatus(e.target.value)}
-                        className="px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded text-xs"
-                      >
-                        <option value="INVESTIGATING">INVESTIGATING</option>
-                        <option value="IDENTIFIED">IDENTIFIED</option>
-                        <option value="MONITORING">MONITORING</option>
-                        <option value="RESOLVED">RESOLVED</option>
-                      </select>
+                      <div className="min-w-[160px]">
+                        <CustomSelect
+                          value={incidentStatus}
+                          onChange={(val) => setIncidentStatus(val as any)}
+                          options={[
+                            { value: 'INVESTIGATING', label: 'INVESTIGATING', badge: 'ALERT' },
+                            { value: 'IDENTIFIED', label: 'IDENTIFIED', badge: 'INFO' },
+                            { value: 'MONITORING', label: 'MONITORING', badge: 'WATCH' },
+                            { value: 'RESOLVED', label: 'RESOLVED', badge: 'OK' },
+                          ]}
+                        />
+                      </div>
                     </div>
                     <textarea
                       rows={2}

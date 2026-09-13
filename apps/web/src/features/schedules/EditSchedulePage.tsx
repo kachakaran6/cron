@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Play, Trash2, Plus, CheckCircle2, Shield, Bell, Clock, Globe, Settings2, Sliders } from 'lucide-react';
 import { fetchJobById, updateJob, deleteJob } from '../../services/api';
 import { CodeBlock } from '../../components/ui/CodeBlock';
+import { CustomSelect } from '../../components/ui/CustomSelect';
 
 const PRESET_SCHEDULES = [
   { label: 'Every minute', expr: '* * * * *' },
@@ -457,34 +458,28 @@ export default function EditSchedulePage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Time zone</label>
-              <select
+              <CustomSelect
                 value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="w-full px-2.5 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus-ring shadow-xs"
-              >
-                {TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {tz}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setTimezone(val)}
+                options={TIMEZONES.map((tz) => ({ value: tz, label: tz }))}
+              />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Request method</label>
-              <select
+              <CustomSelect
                 value={method}
-                onChange={(e: any) => setMethod(e.target.value)}
-                className="w-full px-2.5 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 font-mono focus-ring shadow-xs"
-              >
-                <option>GET</option>
-                <option>POST</option>
-                <option>PUT</option>
-                <option>PATCH</option>
-                <option>DELETE</option>
-                <option>HEAD</option>
-                <option>OPTIONS</option>
-              </select>
+                onChange={(val) => setMethod(val as any)}
+                options={[
+                  { value: 'GET', label: 'GET', badge: 'HTTP' },
+                  { value: 'POST', label: 'POST', badge: 'HTTP' },
+                  { value: 'PUT', label: 'PUT', badge: 'HTTP' },
+                  { value: 'PATCH', label: 'PATCH', badge: 'HTTP' },
+                  { value: 'DELETE', label: 'DELETE', badge: 'HTTP' },
+                  { value: 'HEAD', label: 'HEAD', badge: 'HTTP' },
+                  { value: 'OPTIONS', label: 'OPTIONS', badge: 'HTTP' },
+                ]}
+              />
             </div>
 
             <div>
