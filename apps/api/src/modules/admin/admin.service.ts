@@ -290,12 +290,7 @@ export class AdminService {
           .where(eq(subscriptions.organizationId, orgId))
           .limit(1);
 
-        let planId = userOrg.planId || 'free';
-        if (sub && sub.plan === 'PRO' && sub.gumroadStatus !== 'EXPIRED' && sub.gumroadStatus !== 'REFUNDED') {
-          if (planId !== 'annual' && planId !== 'enterprise') {
-            planId = 'pro';
-          }
-        }
+        const planId = (userOrg.planId || 'free').toLowerCase();
 
         return {
           ...u,
@@ -323,8 +318,13 @@ export class AdminService {
 
   async updateUserPlan(targetUserId: string, planId: string) {
     const normalizedPlan = (planId || 'free').toLowerCase();
-    const isPro = normalizedPlan === 'pro' || normalizedPlan === 'enterprise' || normalizedPlan === 'annual';
-    const isAnnual = normalizedPlan === 'annual' || normalizedPlan === 'enterprise';
+    const targetPlan = ['free', 'pro', 'annual', 'enterprise'].includes(normalizedPlan)
+      ? normalizedPlan
+      : 'free';
+
+    const isPro = targetPlan !== 'free';
+    const subPlanName = targetPlan === 'free' ? 'FREE' : targetPlan === 'pro' ? 'PRO' : targetPlan === 'annual' ? 'ANNUAL' : 'ENTERPRISE';
+    const subStatus = isPro ? 'ACTIVE' : 'EXPIRED';
 
     let [org] = await db.select().from(organizations).where(eq(organizations.ownerId, targetUserId)).limit(1);
     if (!org) {
@@ -337,7 +337,7 @@ export class AdminService {
           name: `${u.name || u.email.split('@')[0]}'s Organization`,
           slug,
           ownerId: u.id,
-          planId: isAnnual ? 'annual' : isPro ? 'pro' : 'free',
+          planId: targetPlan,
         })
         .returning();
       org = newOrg;
@@ -346,7 +346,7 @@ export class AdminService {
     // 1. Update Organization
     const [updatedOrg] = await db
       .update(organizations)
-      .set({ planId: isAnnual ? 'annual' : isPro ? 'pro' : 'free', updatedAt: new Date() })
+      .set({ planId: targetPlan, updatedAt: new Date() })
       .where(eq(organizations.id, org.id))
       .returning();
 
@@ -361,9 +361,9 @@ export class AdminService {
       await db
         .update(subscriptions)
         .set({
-          plan: isPro ? 'PRO' : 'FREE',
-          billingStatus: isPro ? 'ACTIVE' : 'EXPIRED',
-          gumroadStatus: isPro ? 'ACTIVE' : 'EXPIRED',
+          plan: subPlanName,
+          billingStatus: subStatus,
+          gumroadStatus: subStatus,
           updatedAt: new Date(),
         })
         .where(eq(subscriptions.id, existingSub.id));
@@ -371,16 +371,30 @@ export class AdminService {
       await db.insert(subscriptions).values({
         userId: targetUserId,
         organizationId: org.id,
-        plan: isPro ? 'PRO' : 'FREE',
-        billingStatus: isPro ? 'ACTIVE' : 'EXPIRED',
-        gumroadStatus: isPro ? 'ACTIVE' : 'EXPIRED',
+        plan: subPlanName,
+        billingStatus: subStatus,
+        gumroadStatus: subStatus,
       });
     }
 
     // 3. Sync Entitlements Table
-    const maxJobs = !isPro ? 5 : isAnnual ? 1000 : 500;
-    const minIntervalSeconds = !isPro ? 60 : isAnnual ? 5 : 10;
-    const historyRetentionDays = !isPro ? 3 : isAnnual ? 90 : 30;
+    let maxJobs = 5;
+    let minIntervalSeconds = 60;
+    let historyRetentionDays = 3;
+
+    if (targetPlan === 'pro') {
+      maxJobs = 500;
+      minIntervalSeconds = 10;
+      historyRetentionDays = 30;
+    } else if (targetPlan === 'annual') {
+      maxJobs = 1000;
+      minIntervalSeconds = 5;
+      historyRetentionDays = 90;
+    } else if (targetPlan === 'enterprise') {
+      maxJobs = 999999;
+      minIntervalSeconds = 1;
+      historyRetentionDays = 365;
+    }
 
     const [existingEnt] = await db
       .select()
@@ -409,10 +423,11 @@ export class AdminService {
       });
     }
 
-    this.fileLogger.logInfo(`Admin updated organization ${org.name} plan to ${planId}`, 'ADMIN', { targetUserId, planId });
+    this.fileLogger.logInfo(`Admin updated organization ${org.name} plan to ${targetPlan}`, 'ADMIN', { targetUserId, planId: targetPlan });
     return {
       ...updatedOrg,
-      plan: isPro ? 'PRO' : 'FREE',
+      planId: targetPlan,
+      plan: subPlanName,
       maxJobs,
       minIntervalSeconds,
       historyRetentionDays,

@@ -797,7 +797,7 @@ export default function AdminDashboardPage() {
                               </div>
                               <div className="mt-1 min-w-[200px]">
                                 <CustomSelect
-                                  value={u.planId || 'free'}
+                                  value={(u.planId || 'free').toLowerCase()}
                                   disabled={planMutation.isPending}
                                   onChange={(val) =>
                                     planMutation.mutate({ userId: u.id, planId: val })
@@ -806,6 +806,7 @@ export default function AdminDashboardPage() {
                                     { value: 'free', label: 'Free Starter (5 jobs, 60s)', badge: 'FREE' },
                                     { value: 'pro', label: 'Pro Platform (500 jobs, 10s)', badge: 'PRO' },
                                     { value: 'annual', label: 'Annual Pass (1,000 jobs, 5s)', badge: 'ANNUAL' },
+                                    { value: 'enterprise', label: 'Enterprise Dedicated (999k jobs, 1s)', badge: 'ENTERPRISE' },
                                   ]}
                                 />
                               </div>

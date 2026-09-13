@@ -29,7 +29,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  const selectedOption = options.find((opt) => opt.value?.toLowerCase() === value?.toLowerCase());
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -88,7 +88,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       {isOpen && (
         <div className="absolute left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-1.5 shadow-xl transition-all animate-in fade-in-50 zoom-in-95">
           {options.map((option) => {
-            const isSelected = option.value === value;
+            const isSelected = option.value?.toLowerCase() === value?.toLowerCase();
             return (
               <button
                 key={option.value}
