@@ -322,32 +322,6 @@ export default function BillingPage() {
           </button>
         </form>
 
-        {/* Sandbox Test Keys for Instant Local Testing */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-[11px] font-semibold text-zinc-500">Test Sandbox Keys:</span>
-          <button
-            type="button"
-            onClick={() => setLicenseKeyInput('TEST-CRON-PRO-MONTHLY')}
-            className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/80 hover:text-indigo-600 dark:hover:text-indigo-400 border border-zinc-200 dark:border-zinc-700/80 transition-colors"
-          >
-            TEST-CRON-PRO-MONTHLY
-          </button>
-          <button
-            type="button"
-            onClick={() => setLicenseKeyInput('TEST-CRON-PRO-ANNUAL')}
-            className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-amber-950/80 hover:text-amber-600 dark:hover:text-amber-400 border border-zinc-200 dark:border-zinc-700/80 transition-colors"
-          >
-            TEST-CRON-PRO-ANNUAL (1,000 Jobs)
-          </button>
-          <button
-            type="button"
-            onClick={() => setLicenseKeyInput('TEST-CRON-FREE')}
-            className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-rose-50 dark:hover:bg-rose-950/80 hover:text-rose-600 dark:hover:text-rose-400 border border-zinc-200 dark:border-zinc-700/80 transition-colors"
-          >
-            TEST-CRON-FREE (Reset)
-          </button>
-        </div>
-
         {/* Linked Details if already active */}
         {subscription?.account && (
           <div className="mt-4 p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 text-xs space-y-2">
