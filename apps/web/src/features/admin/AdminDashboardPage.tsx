@@ -176,46 +176,6 @@ export default function AdminDashboardPage() {
       (u.organization?.name && u.organization.name.toLowerCase().includes(userSearch.toLowerCase()))
   );
 
-  const navigationItems = [
-    {
-      id: 'overview' as AdminTab,
-      label: 'Overview',
-      subtitle: 'System summary & table counts',
-      icon: LayoutDashboard,
-    },
-    {
-      id: 'state' as AdminTab,
-      label: 'State & Health',
-      subtitle: 'Node memory & process health',
-      icon: Server,
-    },
-    {
-      id: 'analytics' as AdminTab,
-      label: 'Analytics',
-      subtitle: 'HTTP status & latency metrics',
-      icon: BarChart3,
-    },
-    {
-      id: 'users' as AdminTab,
-      label: 'Users & Orgs',
-      subtitle: 'User accounts & plan management',
-      icon: Users,
-      badge: usersData?.length ? String(usersData.length) : undefined,
-    },
-    {
-      id: 'logs' as AdminTab,
-      label: 'System Logs',
-      subtitle: 'Live log stream & trace details',
-      icon: Terminal,
-      badge: logsData?.total ? String(logsData.total) : undefined,
-    },
-    {
-      id: 'config' as AdminTab,
-      label: 'Runtime Config',
-      subtitle: 'Worker threads & security rules',
-      icon: Sliders,
-    },
-  ];
 
   return (
     <div className="space-y-6">
@@ -268,54 +228,8 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Main Admin Page Layout with Sub-Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Navigation Sidebar / Segmented Bar */}
-        <div className="lg:col-span-3 space-y-1 bg-white dark:bg-zinc-950 p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
-          <div className="px-3 py-2 text-[11px] font-bold font-mono uppercase tracking-wider text-zinc-400">
-            Admin Console Pages
-          </div>
-          {navigationItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleTabChange(item.id)}
-                className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition-all duration-150 ${
-                  isActive
-                    ? 'bg-[var(--accent)] text-white shadow-xs font-medium'
-                    : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-zinc-500'}`} />
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold truncate">{item.label}</div>
-                    <div className={`text-[10px] truncate ${isActive ? 'text-white/80' : 'text-zinc-500'}`}>
-                      {item.subtitle}
-                    </div>
-                  </div>
-                </div>
-
-                {item.badge && (
-                  <span
-                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold shrink-0 ${
-                      isActive
-                        ? 'bg-white/20 text-white'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Active Page View Content */}
-        <div className="lg:col-span-9 space-y-6">
+      {/* Active Page View Content */}
+      <div className="space-y-6">
           {/* ── PAGE 1: OVERVIEW ────────────────────────────────────────────── */}
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-in fade-in duration-200">
@@ -1139,7 +1053,6 @@ export default function AdminDashboardPage() {
             </div>
           )}
         </div>
-      </div>
 
       {/* User Deletion Confirmation Modal */}
       {userToDelete && (

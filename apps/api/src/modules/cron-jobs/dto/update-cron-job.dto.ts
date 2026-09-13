@@ -48,6 +48,20 @@ export class UpdateCronJobDto {
   @IsBoolean()
   enabled?: boolean;
 
+  @ApiPropertyOptional({ example: 3, description: 'Number of automatic retries on failure' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  retryCount?: number;
+
+  @ApiPropertyOptional({ example: 5000, description: 'Delay between retries in ms' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(300000)
+  retryDelayMs?: number;
+
   // Advanced options from benchmark (cron-job.org)
   @ApiPropertyOptional({ description: 'Save responses in job history' })
   @IsOptional()
