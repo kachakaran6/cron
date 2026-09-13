@@ -247,13 +247,13 @@ export default function LandingPage() {
 
   const p = gumroadData?.pricing;
   const plans = gumroadData?.plans;
-  const usdMonthly = p?.usdMonthly ?? 19;
-  const usdAnnual = p?.usdAnnual ?? 190;
+  const usdMonthly = p?.usdMonthly ?? 35;
+  const usdAnnual = p?.usdAnnual ?? 350;
   const inrMonthly = p?.inrMonthly ?? 399;
-  const inrAnnual = p?.inrAnnual ?? 3295;
-  const inrMonthlyBase = p?.inrMonthlyBase ?? 349;
+  const inrAnnual = p?.inrAnnual ?? 2999;
+  const inrMonthlyBase = p?.inrMonthlyBase ?? 338;
   const discountTagUsd = p?.discountTagUsd || 'Save 17%';
-  const discountTagInr = p?.discountTagInr || 'Save ~31%';
+  const discountTagInr = p?.discountTagInr || 'Save 37%';
 
   const freeJobs = plans?.free?.quotas?.maxJobs ?? 5;
   const proJobs = plans?.pro?.quotas?.maxJobs ?? 500;
@@ -822,8 +822,8 @@ Thank you!`;
                         <td className="py-3 px-3 sm:px-4 font-mono">{currency === 'INR' ? '₹0' : '$0'} / forever</td>
                         <td className="py-3 px-3 sm:px-4 font-mono font-bold text-[var(--accent)]">
                           {currency === 'INR'
-                            ? (isYearly ? '₹3,295/yr (~₹274/mo)' : '₹399/mo all-incl.')
-                            : (isYearly ? '$190/yr (~$15.8/mo)' : '$19/mo')}
+                            ? (isYearly ? `₹${inrAnnual.toLocaleString()}/yr (~₹${Math.round(inrAnnual / 12)}/mo)` : `₹${inrMonthly}/mo all-incl.`)
+                            : (isYearly ? `$${usdAnnual}/yr (~$${(usdAnnual / 12).toFixed(1)}/mo)` : `$${usdMonthly}/mo`)}
                         </td>
                         <td className="py-3 px-3 sm:px-4 font-mono">Custom tailored</td>
                       </tr>
