@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle2, XCircle, Eye } from 'lucide-react';
 import { fetchJobRuns } from '../services/api';
+import ResponsePreviewModal, { ExecutionLogDetail } from '../components/ui/ResponsePreviewModal';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [selectedRun, setSelectedRun] = useState<ExecutionLogDetail | null>(null);
 
   const { data: runs, isLoading } = useQuery({
     queryKey: ['job-runs', id],
@@ -39,13 +41,14 @@ export default function JobDetailPage() {
               <th className="px-6 py-3.5">HTTP Code</th>
               <th className="px-6 py-3.5">Duration</th>
               <th className="px-6 py-3.5">Worker</th>
-              <th className="px-6 py-3.5">Response Body</th>
+              <th className="px-6 py-3.5">Response Preview</th>
+              <th className="px-6 py-3.5 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60 font-sans">
             {isLoading && (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-slate-500 text-sm">
+                <td colSpan={7} className="px-6 py-8 text-center text-slate-500 text-sm">
                   Loading execution runs...
                 </td>
               </tr>
@@ -53,14 +56,18 @@ export default function JobDetailPage() {
 
             {!isLoading && runs?.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-slate-500 text-sm">
+                <td colSpan={7} className="px-6 py-8 text-center text-slate-500 text-sm">
                   No execution logs recorded yet.
                 </td>
               </tr>
             )}
 
             {runs?.map((run) => (
-              <tr key={run.id} className="hover:bg-slate-900/60 transition-colors">
+              <tr
+                key={run.id}
+                onClick={() => setSelectedRun({ ...run, statusCode: run.httpStatus || undefined, responseTime: run.durationMs, executedAt: run.startedAt })}
+                className="hover:bg-slate-900/80 transition-colors cursor-pointer group"
+              >
                 <td className="px-6 py-4 font-mono text-xs text-slate-300">
                   {new Date(run.startedAt).toLocaleString()}
                 </td>
@@ -102,11 +109,31 @@ export default function JobDetailPage() {
                 <td className="px-6 py-4 font-mono text-xs text-slate-400 max-w-xs truncate">
                   {run.responseBody || run.errorMessage || '-'}
                 </td>
+                <td className="px-6 py-4 text-right">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedRun({ ...run, statusCode: run.httpStatus || undefined, responseTime: run.durationMs, executedAt: run.startedAt });
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Inspect
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {selectedRun && (
+        <ResponsePreviewModal
+          log={selectedRun}
+          onClose={() => setSelectedRun(null)}
+        />
+      )}
     </div>
   );
 }
+

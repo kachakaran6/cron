@@ -5,6 +5,7 @@ import { ArrowLeft, Play, Edit3, Trash2, Shield, Bell, CheckCircle2, Clock, Glob
 import { fetchJobById, triggerJobExecution, deleteJob } from '../../services/api';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { CodeBlock } from '../../components/ui/CodeBlock';
+import ResponsePreviewModal from '../../components/ui/ResponsePreviewModal';
 
 export default function ScheduleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -349,40 +350,17 @@ export default function ScheduleDetailPage() {
         </div>
       )}
 
-      {/* Detailed Execution Inspector Drawer */}
+      {/* Detailed Execution Response Inspector Modal */}
       {selectedExecution && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-end z-50">
-          <div className="w-full max-w-xl bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 space-y-5 overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
-              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Execution Technical Inspector</h2>
-              <button
-                onClick={() => setSelectedExecution(null)}
-                className="text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-mono px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-              <div className="p-3.5 border border-zinc-200 dark:border-zinc-800 rounded-md bg-zinc-50 dark:bg-zinc-900">
-                <span className="text-zinc-500 block text-[10px] uppercase font-semibold">HTTP STATUS</span>
-                <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm">{selectedExecution.statusCode || 200}</span>
-              </div>
-              <div className="p-3.5 border border-zinc-200 dark:border-zinc-800 rounded-md bg-zinc-50 dark:bg-zinc-900">
-                <span className="text-zinc-500 block text-[10px] uppercase font-semibold">DURATION</span>
-                <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm">{selectedExecution.responseTime || 15}ms</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-xs font-mono text-zinc-700 dark:text-zinc-300 font-semibold uppercase">Response Body</span>
-              <CodeBlock
-                code={selectedExecution.responseBody || '{"status": "ok", "message": "Endpoint invoked successfully"}'}
-                language="json"
-              />
-            </div>
-          </div>
-        </div>
+        <ResponsePreviewModal
+          log={{
+            ...selectedExecution,
+            jobName: job.name,
+            jobUrl: job.url,
+            method: job.method || 'GET',
+          }}
+          onClose={() => setSelectedExecution(null)}
+        />
       )}
     </div>
   );
