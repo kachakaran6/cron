@@ -18,7 +18,12 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Shield
+  Shield,
+  Server,
+  BarChart3,
+  Users,
+  Terminal,
+  Sliders,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -72,9 +77,14 @@ export default function AppShell() {
     { label: 'Settings', to: '/dashboard/settings', icon: Settings },
   ];
 
-  const navItems: NavItem[] = isAdmin
-    ? [...baseNavItems, { label: 'Developer Admin', to: '/dashboard/admin', icon: Shield, badge: 'ADMIN' }]
-    : baseNavItems;
+  const adminSubNavItems: NavItem[] = [
+    { label: 'Admin Overview', to: '/dashboard/admin/overview', icon: Shield },
+    { label: 'System State', to: '/dashboard/admin/state', icon: Server },
+    { label: 'System Analytics', to: '/dashboard/admin/analytics', icon: BarChart3 },
+    { label: 'User Directory', to: '/dashboard/admin/users', icon: Users },
+    { label: 'System Logs', to: '/dashboard/admin/logs', icon: Terminal },
+    { label: 'Runtime Config', to: '/dashboard/admin/config', icon: Sliders },
+  ];
 
   const mobileQuickItems = [
     { label: 'Overview', to: '/dashboard', icon: LayoutGrid, exact: true },
@@ -266,32 +276,67 @@ export default function AppShell() {
           </div>
 
           {/* Navigation Links */}
-          <div className="space-y-1">
-            <div className="text-[10px] font-mono font-semibold text-zinc-500 uppercase tracking-wider px-2 py-1">
-              Platform
-            </div>
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.exact 
-                ? location.pathname === item.to || location.pathname === '/dashboard/'
-                : location.pathname.startsWith(item.to);
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <div className="text-[10px] font-mono font-semibold text-zinc-500 uppercase tracking-wider px-2 py-1">
+                Platform
+              </div>
+              {baseNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.exact 
+                  ? (location.pathname === item.to || location.pathname === '/dashboard/') && !location.pathname.startsWith('/dashboard/admin')
+                  : location.pathname.startsWith(item.to) && !location.pathname.startsWith('/dashboard/admin');
 
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'nav-active-accent font-semibold'
-                      : 'text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span>{item.label}</span>
-                </NavLink>
-              );
-            })}
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'nav-active-accent font-semibold'
+                        : 'text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+
+            {isAdmin && (
+              <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-1">
+                <div className="flex items-center justify-between px-2 py-1 mb-0.5">
+                  <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                    Developer Admin
+                  </span>
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    ADMIN
+                  </span>
+                </div>
+                {adminSubNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.to || (item.to === '/dashboard/admin/overview' && location.pathname === '/dashboard/admin');
+
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                        isActive
+                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 font-semibold border border-amber-500/30'
+                          : 'text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-amber-600 dark:text-amber-400' : ''}`} />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Additional Links */}
@@ -373,34 +418,71 @@ export default function AppShell() {
           >
             {sidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
           </button>
-          <div className="space-y-1">
-            {!sidebarCollapsed && (
-              <div className="text-[10px] font-mono font-semibold text-zinc-500 uppercase tracking-wider px-2 py-1.5 mb-1 animate-in fade-in duration-200">
-                Platform
+          <div className="space-y-4 overflow-y-auto pr-1">
+            <div className="space-y-1">
+              {!sidebarCollapsed && (
+                <div className="text-[10px] font-mono font-semibold text-zinc-500 uppercase tracking-wider px-2 py-1 mb-0.5 animate-in fade-in duration-200">
+                  Platform
+                </div>
+              )}
+              {baseNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.exact 
+                  ? (location.pathname === item.to || location.pathname === '/dashboard/') && !location.pathname.startsWith('/dashboard/admin')
+                  : location.pathname.startsWith(item.to) && !location.pathname.startsWith('/dashboard/admin');
+
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    title={item.label}
+                    className={`flex items-center gap-2.5 py-2 rounded-md text-xs font-medium transition-all ${
+                      isActive
+                        ? 'nav-active-accent font-semibold'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                    } ${sidebarCollapsed ? 'justify-center px-0' : 'px-2.5'}`}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                  </NavLink>
+                );
+              })}
+            </div>
+
+            {isAdmin && (
+              <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800/80 space-y-1">
+                {!sidebarCollapsed && (
+                  <div className="flex items-center justify-between px-2 py-1 mb-0.5">
+                    <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                      Developer Admin
+                    </span>
+                    <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      ADMIN
+                    </span>
+                  </div>
+                )}
+                {adminSubNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.to || (item.to === '/dashboard/admin/overview' && location.pathname === '/dashboard/admin');
+
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      title={item.label}
+                      className={`flex items-center gap-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                        isActive
+                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 font-semibold border border-amber-500/30'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                      } ${sidebarCollapsed ? 'justify-center px-0' : 'px-2.5'}`}
+                    >
+                      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-amber-600 dark:text-amber-400' : ''}`} />
+                      {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                    </NavLink>
+                  );
+                })}
               </div>
             )}
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.exact 
-                ? location.pathname === item.to || location.pathname === '/dashboard/'
-                : location.pathname.startsWith(item.to);
-
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  title={item.label}
-                  className={`flex items-center gap-2.5 py-2 rounded-md text-xs font-medium transition-all ${
-                    isActive
-                      ? 'nav-active-accent font-semibold'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                  } ${sidebarCollapsed ? 'justify-center px-0' : 'px-2.5'}`}
-                >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
-                </NavLink>
-              );
-            })}
           </div>
 
           <div

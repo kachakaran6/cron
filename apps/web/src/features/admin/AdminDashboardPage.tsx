@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShieldAlert,
@@ -49,7 +50,27 @@ type AdminTab = 'overview' | 'state' | 'analytics' | 'users' | 'logs' | 'config'
 
 export default function AdminDashboardPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const { tab } = useParams<{ tab?: string }>();
+  const navigate = useNavigate();
+
+  const initialTab: AdminTab = (tab && ['overview', 'state', 'analytics', 'users', 'logs', 'config'].includes(tab))
+    ? (tab as AdminTab)
+    : 'overview';
+
+  const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
+
+  useEffect(() => {
+    if (tab && ['overview', 'state', 'analytics', 'users', 'logs', 'config'].includes(tab)) {
+      setActiveTab(tab as AdminTab);
+    } else if (!tab) {
+      setActiveTab('overview');
+    }
+  }, [tab]);
+
+  const handleTabChange = (newTab: AdminTab) => {
+    setActiveTab(newTab);
+    navigate(`/dashboard/admin/${newTab}`);
+  };
 
   // Logs state
   const [logLevel, setLogLevel] = useState<string>('ALL');
@@ -260,7 +281,7 @@ export default function AdminDashboardPage() {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => handleTabChange(item.id)}
                 className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition-all duration-150 ${
                   isActive
                     ? 'bg-[var(--accent)] text-white shadow-xs font-medium'

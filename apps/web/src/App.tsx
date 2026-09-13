@@ -66,6 +66,7 @@ export default function App() {
                   <Route path="api-keys" element={<ApiKeysPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="admin" element={<AdminDashboardPage />} />
+                  <Route path="admin/:tab" element={<AdminDashboardPage />} />
                 </Route>
               </Route>
 
