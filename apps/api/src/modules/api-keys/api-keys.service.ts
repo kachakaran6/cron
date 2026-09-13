@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Logger, InternalServerErrorException } from '@nestjs/common';
 import { db, apiKeys, organizations, users } from '@cron-saas/database';
 import { eq, desc, and } from 'drizzle-orm';
-import crypto from 'node:crypto';
+import * as crypto from 'node:crypto';
 
 @Injectable()
 export class ApiKeysService {
@@ -98,10 +98,10 @@ export class ApiKeysService {
     try {
       const { orgId, userId } = await this.ensureValidOrgAndUser(organizationId, createdById);
 
-      const rawRandom = crypto.randomBytes(24).toString('hex');
+      const rawRandom = crypto.randomBytes ? crypto.randomBytes(24).toString('hex') : require('crypto').randomBytes(24).toString('hex');
       const fullKey = `cr_live_${rawRandom}`;
       const keyPrefix = fullKey.slice(0, 12);
-      const hashedKey = crypto.createHash('sha256').update(fullKey).digest('hex');
+      const hashedKey = (crypto.createHash ? crypto.createHash('sha256') : require('crypto').createHash('sha256')).update(fullKey).digest('hex');
 
       const safeName = (typeof name === 'string' && name.trim()) ? name.trim() : 'New API Key';
 

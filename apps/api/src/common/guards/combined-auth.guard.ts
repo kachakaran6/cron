@@ -1,5 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import crypto from 'node:crypto';
+import * as crypto from 'node:crypto';
 import * as jwt from 'jsonwebtoken';
 import { db, apiKeys, organizations } from '@cron-saas/database';
 import { eq } from 'drizzle-orm';
@@ -22,7 +22,8 @@ export class CombinedAuthGuard implements CanActivate {
 
     // 1. Try API Key
     if (apiKeyHeader && apiKeyHeader.startsWith('cr_live_')) {
-      const hashed = crypto.createHash('sha256').update(apiKeyHeader).digest('hex');
+      const createHashFn = crypto.createHash || require('crypto').createHash;
+      const hashed = createHashFn('sha256').update(apiKeyHeader).digest('hex');
 
       const [keyRecord] = await db
         .select()
