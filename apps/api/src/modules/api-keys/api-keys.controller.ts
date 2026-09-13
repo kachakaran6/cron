@@ -19,12 +19,12 @@ export class ApiKeysController {
   @Get()
   @ApiOperation({ summary: 'List all active API keys' })
   async list(@Req() req: any) {
-    return this.apiKeysService.listApiKeys(req.organizationId);
+    return this.apiKeysService.listApiKeys(req.organizationId, req.userId);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Revoke an API key' })
   async revoke(@Req() req: any, @Param('id') id: string) {
-    return this.apiKeysService.revokeApiKey(id, req.organizationId);
+    return this.apiKeysService.revokeApiKey(id, req.organizationId, req.userId);
   }
 }

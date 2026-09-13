@@ -55,8 +55,17 @@ export class CombinedAuthGuard implements CanActivate {
         req.organizationId = payload.orgId;
         req.authType = 'JWT';
 
-        // Auto-heal missing or dummy orgId
-        if (!req.organizationId || req.organizationId === '00000000-0000-0000-0000-000000000000') {
+        // Auto-heal missing, dummy, or non-existent orgId in DB
+        let validOrg = null;
+        if (req.organizationId && req.organizationId !== '00000000-0000-0000-0000-000000000000') {
+          [validOrg] = await db
+            .select({ id: organizations.id })
+            .from(organizations)
+            .where(eq(organizations.id, req.organizationId))
+            .limit(1);
+        }
+
+        if (!validOrg) {
           const [userOrg] = await db
             .select({ id: organizations.id })
             .from(organizations)
@@ -65,18 +74,22 @@ export class CombinedAuthGuard implements CanActivate {
 
           if (userOrg) {
             req.organizationId = userOrg.id;
-          } else {
+          } else if (req.userId) {
             const slug = (req.userEmail?.split('@')[0] || 'org').replace(/[^a-z0-9]/gi, '-').toLowerCase() + '-' + req.userId.slice(0, 8);
-            const [newOrg] = await db
-              .insert(organizations)
-              .values({
-                name: `${req.userEmail?.split('@')[0] || 'Personal'}'s Organization`,
-                slug,
-                ownerId: req.userId,
-                planId: 'free',
-              })
-              .returning();
-            req.organizationId = newOrg.id;
+            try {
+              const [newOrg] = await db
+                .insert(organizations)
+                .values({
+                  name: `${req.userEmail?.split('@')[0] || 'Personal'}'s Organization`,
+                  slug,
+                  ownerId: req.userId,
+                  planId: 'free',
+                })
+                .returning();
+              req.organizationId = newOrg.id;
+            } catch {
+              // Ignore if userId FK is temporary or invalid
+            }
           }
         }
 
