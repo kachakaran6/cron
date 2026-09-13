@@ -253,23 +253,19 @@ export class AuthService {
   }
 
   private get googleClientId(): string {
-    const b64 = 'NjkwOTI5NjEwMzkxLTd2OW10Z3Bzb2hicTZsZzJt' + 'MDFiaXFlam9iMGJ2ZThxLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29t';
-    return process.env.GOOGLE_CLIENT_ID || Buffer.from(b64, 'base64').toString('utf-8');
+    return process.env.GOOGLE_CLIENT_ID || '';
   }
 
   private get googleClientSecret(): string {
-    const b64 = 'R09DU1BYLXVmSGJMWjh0TXlEb3QxWGl5' + 'SHY3LWpEcDh3alo=';
-    return process.env.GOOGLE_CLIENT_SECRET || Buffer.from(b64, 'base64').toString('utf-8');
+    return process.env.GOOGLE_CLIENT_SECRET || '';
   }
 
   private get githubClientId(): string {
-    const b64 = 'T3YyM2xpSUxvSDNS' + 'UGRpNDJJbmc=';
-    return process.env.GITHUB_CLIENT_ID || Buffer.from(b64, 'base64').toString('utf-8');
+    return process.env.GITHUB_CLIENT_ID || '';
   }
 
   private get githubClientSecret(): string {
-    const b64 = 'YjcxMTlkMTk2YmRkZmI3MTUwYTVhOTY1' + 'ZjBlMmM3MzYyYjRmYWFlZA==';
-    return process.env.GITHUB_CLIENT_SECRET || Buffer.from(b64, 'base64').toString('utf-8');
+    return process.env.GITHUB_CLIENT_SECRET || '';
   }
 
   getGoogleAuthUrl(): string {

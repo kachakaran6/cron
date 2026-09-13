@@ -41,8 +41,13 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_pass_2026}
       FRONTEND_URL: ${FRONTEND_URL:-https://cron.samast.pro}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-https://cron.samast.pro}
       JWT_SECRET: ${JWT_SECRET:-samast_cron_jwt_secret_change_in_production_2026}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-b5e8f498c39d8461719c8fba5a4c9c1b72e90c8831ef09c0d123456789abcdef}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:4000/api/v1/health || exit 1"]
       interval: 15s

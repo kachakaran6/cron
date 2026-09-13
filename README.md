@@ -1,72 +1,127 @@
-# Production Cron Job SaaS Platform
+# ⚡ Samast Cron — Open-Source Scheduled HTTP Request Infrastructure
 
-> A high-reliability, distributed scheduling & HTTP job execution platform inspired by cron-job.org.
-> Engineered with **React + Vite**, **NestJS**, **PostgreSQL (Drizzle ORM)**, and **Redis/BullMQ** with isolated execution workers.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build & Deployment](https://img.shields.io/badge/Production-Live-emerald.svg)](https://cron.samast.pro)
+[![Code style](https://img.shields.io/badge/Code%20Style-Prettier-ff69b4.svg)](https://prettier.io)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue.svg)](https://www.typescriptlang.org/)
 
----
-
-## 📖 Master Documentation
-
-The complete architectural guide, code templates, security guidelines, and runbooks are available in:
-👉 **[PRODUCTION_CRON_SAAS_BLUEPRINT.md](file:///d:/Cron/PRODUCTION_CRON_SAAS_BLUEPRINT.md)**
-
-### Highlights of the Master Specification:
-1. **Core Philosophy & Architectural Decisions**:
-   - Why not Express? (Domain-heavy modular NestJS structure vs raw minimal Express).
-   - Why not execute HTTP requests in the API server? (Worker isolation with `undici` + BullMQ).
-   - Why React + Vite instead of Next.js? (Pure authenticated SPA dashboard with TanStack Query and zero SSR overhead).
-2. **Turborepo Monorepo Layout**:
-   - `apps/api`: NestJS REST & OpenAPI / Swagger backend.
-   - `apps/scheduler`: Next-run calculator and BullMQ task producer.
-   - `apps/worker`: Stateless HTTP execution workers with anti-SSRF protection.
-   - `apps/web`: React + Vite + Tailwind + shadcn/ui dashboard.
-   - `packages/database`: PostgreSQL schema & migrations via Drizzle ORM.
-   - `packages/shared`: Shared types, Zod schemas, and cron utilities.
-3. **Database Schemas (Drizzle ORM)**:
-   - `cron_jobs`, `cron_job_runs`, `api_keys`, `organizations`, `users`, `entitlements`.
-4. **Security & Anti-SSRF Defense Perimeter**:
-   - Node.js DNS resolution validator blocking private CIDRs (`127.0.0.1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), loopback, and Cloud Metadata (`169.254.169.254`).
-5. **Job Scheduling Engine & BullMQ Worker**:
-   - `cron-parser` + timezone-aware next-run evaluation.
-   - 50-concurrency worker loop with response latency tracking and log truncation.
-6. **NestJS API with OpenAPI / Swagger**:
-   - Global validation, CORS, bearer JWT, and `X-API-Key` guard.
-   - Interactive Swagger documentation at `/api/docs`.
-7. **Future-Ready Entitlement System**:
-   - Zero hardcoded plan strings; clean capability-based checks (`assertCanCreateJob`).
-   - 100% free at launch, immediately upgradeable to paid Stripe tiers without refactoring.
-8. **Consistent Professional Frontend UI Architecture**:
-   - Design System Tokens: Slate-950 obsidian background, glassmorphic cards, emerald active pulses, rose error badges.
-   - Master Layout Shell (`DashboardLayout.tsx`) with real-time cluster latency heartbeat and workspace switcher.
-   - Real-time Jobs Table (`JobsListPage.tsx`) with countdown timers and instant "Run Now" actions.
-   - Interactive Job Creation Form (`CreateJobPage.tsx`) with live Cron expression translator and dynamic cURL preview.
-   - Beautiful dark-themed custom 404 error page (`NotFoundPage.tsx`) and Vercel SPA routing (`vercel.json`).
-9. **Docker & Containerization**:
-   - Multi-stage production `Dockerfile`.
-   - Complete `docker-compose.yml` (PostgreSQL, Redis, API, Scheduler, 3 Worker replicas).
-   - `.env.example` reference.
-10. **Observability & SRE Metrics**:
-    - Prometheus tracking for `cron_scheduler_lag_seconds`, `cron_job_executions_total`, and `cron_job_execution_duration_seconds`.
-11. **Professional Git & GitHub Mastery (Beginner to Production)**:
-    - Safe monorepo `.gitignore` (blocking secrets, keys, and dumps).
-    - Conventional Commits standard (`feat:`, `fix:`, `docs:`, `chore:`).
-    - Task-by-task atomic commit checklist (exact commands to stage, diff, and commit per completed milestone).
-    - Complete 13-step project lifecycle commit history from zero to production.
-    - Automated GitHub Actions CI/CD pipeline (`.github/workflows/ci.yml`).
-    - Husky + lint-staged pre-commit hooks and Pull Request template.
+**Samast Cron** is a high-reliability, distributed HTTP job scheduling & execution engine inspired by `cron-job.org`. Engineered for millisecond-accurate webhook dispatches, background task execution, and real-time execution monitoring.
 
 ---
 
-## Quick Start
+## ✨ Features
+
+- ⏱️ **Millisecond-Accurate Cron Scheduler**: Evaluates complex cron expressions (`* * * * *`, `@every 5m`, etc.) with timezone support.
+- 🔒 **Anti-SSRF Protection Perimeter**: Built-in DNS resolution validator blocking private CIDRs (`127.0.0.1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), loopback, and Cloud Metadata IPs.
+- ⚡ **Stateless Worker Pool**: High-concurrency workers powered by BullMQ & Redis with automated retries and latency tracking.
+- 📊 **Developer Admin Console**: Real-time system telemetry, Node memory health, 12h request throughput charts, HTTP status distribution, and log file streams.
+- 🔐 **OAuth 2.0 & API Key Security**: Native Google and GitHub OAuth 2.0 authentication + bearer JWT & `X-API-Key` authentication.
+- 🌐 **Public Status Pages**: Customizable public status monitors and uptime pages.
+- 🔔 **Multi-Channel Alerts**: Webhook, Email, Slack, and Discord incident notifications.
+
+---
+
+## 🏗️ Architecture Overview
+
+```
+                        ┌───────────────────────────────┐
+                        │   React + Vite SPA Dashboard   │
+                        │    (https://cron.samast.pro)   │
+                        └───────────────┬───────────────┘
+                                        │ REST / OpenAPI
+                                        ▼
+                        ┌───────────────────────────────┐
+                        │   NestJS REST API Gateway     │
+                        │    (OpenAPI / Swagger Docs)   │
+                        └───────────────┬───────────────┘
+                                        │
+                 ┌──────────────────────┴──────────────────────┐
+                 ▼                                             ▼
+       ┌──────────────────┐                           ┌──────────────────┐
+       │   PostgreSQL     │                           │   Redis Cache    │
+       │  (Drizzle ORM)   │                           │  & BullMQ Queues │
+       └──────────────────┘                           └────────┬─────────┘
+                                                               │
+                                                               ▼
+                                                      ┌──────────────────┐
+                                                      │ HTTP Workers     │
+                                                      │ (Anti-SSRF Guard)│
+                                                      └──────────────────┘
+```
+
+---
+
+## 🚀 Quick Start (Local Development)
+
+### Prerequisites
+- Node.js `v20+`
+- `pnpm` `v9+`
+- Docker & Docker Compose
+
+### Step 1: Clone & Install Dependencies
+```bash
+git clone https://github.com/kachakaran6/cron.git
+cd cron
+pnpm install
+```
+
+### Step 2: Configure Environment Variables
+Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+
+### Step 3: Start Services with Docker
+```bash
+# Start PostgreSQL & Redis
+docker compose up -d postgres redis
+
+# Run database migrations
+pnpm --filter @cron-saas/database db:push
+
+# Start development servers
+pnpm dev
+```
+
+- **Frontend Dashboard**: `http://localhost:5173`
+- **Backend API & Swagger Docs**: `http://localhost:4000/api/docs`
+
+---
+
+## 🔑 Environment Variables Reference
+
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `PORT` | API Server Port | `4000` |
+| `DATABASE_URL` | PostgreSQL Connection String | `postgresql://cron_user:pass@localhost:5432/cron_saas` |
+| `REDIS_HOST` | Redis Server Host | `localhost` |
+| `REDIS_PORT` | Redis Server Port | `6379` |
+| `JWT_SECRET` | Secret key for JWT signing | `your-secret-key` |
+| `GOOGLE_CLIENT_ID` | Google OAuth 2.0 Client ID | `your-google-client-id.apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth 2.0 Client Secret | `your-google-client-secret` |
+| `GITHUB_CLIENT_ID` | GitHub OAuth 2.0 Client ID | `your-github-client-id` |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth 2.0 Client Secret | `your-github-client-secret` |
+
+---
+
+## 🚢 Docker & Coolify Deployment
+
+Deploy to any Linux server or Coolify instance using Docker Compose:
 
 ```bash
-# 1. Start all infrastructure and services via Docker Compose
-docker compose up -d --build
-
-# 2. View interactive API documentation (Swagger)
-open http://localhost:4000/api/docs
-
-# 3. Start the Web Dashboard
-pnpm --filter @cron-saas/web dev
-# Access http://localhost:5173
+docker compose -f docker-compose.coolify.yml up -d --build
 ```
+
+Detailed deployment runbooks and reverse-proxy setup instructions are documented in [COOLIFY_DEPLOYMENT_GUIDE.md](COOLIFY_DEPLOYMENT_GUIDE.md).
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before submitting Pull Requests.
+
+---
+
+## 📄 License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.
