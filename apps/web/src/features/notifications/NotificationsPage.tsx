@@ -1,11 +1,25 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, Plus, Trash2, Mail, Webhook, MessageSquare, Check, X } from 'lucide-react';
+import {
+  Bell,
+  Plus,
+  Trash2,
+  Mail,
+  Webhook,
+  MessageSquare,
+  Check,
+  X,
+  Send,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react';
 import {
   fetchNotificationChannels,
   createNotificationChannel,
   toggleNotificationChannel,
   deleteNotificationChannel,
+  testNotificationChannel,
   NotificationChannelDTO,
 } from '../../services/api';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -17,6 +31,16 @@ export default function NotificationsPage() {
   const [name, setName] = useState('');
   const [type, setType] = useState<'email' | 'webhook' | 'slack' | 'discord'>('email');
   const [target, setTarget] = useState('');
+
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testFeedback, setTestFeedback] = useState<{
+    channelName: string;
+    type: string;
+    destination: string;
+    success: boolean;
+    message: string;
+    detail?: string;
+  } | null>(null);
 
   const { data: channels, isLoading } = useQuery({
     queryKey: ['notification-channels'],
@@ -59,8 +83,34 @@ export default function NotificationsPage() {
     });
   };
 
+  const handleTest = async (id: string, ch: NotificationChannelDTO) => {
+    setTestingId(id);
+    setTestFeedback(null);
+    try {
+      const res = await testNotificationChannel(id);
+      setTestFeedback({
+        channelName: ch.name,
+        type: ch.type,
+        destination: ch.config?.target || '',
+        success: res.success,
+        message: res.message,
+        detail: res.detail,
+      });
+    } catch (err: any) {
+      setTestFeedback({
+        channelName: ch.name,
+        type: ch.type,
+        destination: ch.config?.target || '',
+        success: false,
+        message: err?.message || 'Failed to send test notification',
+      });
+    } finally {
+      setTestingId(null);
+    }
+  };
+
   const getChannelIcon = (t: string) => {
-    switch (t) {
+    switch (t?.toLowerCase()) {
       case 'email':
         return <Mail className="w-4 h-4 text-sky-500" />;
       case 'slack':
@@ -92,9 +142,52 @@ export default function NotificationsPage() {
         </button>
       </div>
 
+      {/* Test Alert Feedback Banner */}
+      {testFeedback && (
+        <div
+          className={`p-4 rounded-xl border flex items-start justify-between gap-3 text-xs transition-all shadow-sm ${
+            testFeedback.success
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-200'
+          }`}
+        >
+          <div className="flex items-start gap-2.5">
+            {testFeedback.success ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500 mt-0.5" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+            )}
+            <div className="space-y-1">
+              <div className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <span>{testFeedback.success ? 'Test Notification Dispatched' : 'Notification Failed'}</span>
+                <span className="font-mono text-[10px] uppercase px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                  {testFeedback.type}
+                </span>
+                <span className="font-mono text-[11px] text-zinc-500">({testFeedback.destination})</span>
+              </div>
+              <p className="text-zinc-700 dark:text-zinc-300 font-sans leading-relaxed">
+                {testFeedback.message}
+              </p>
+              {testFeedback.detail && (
+                <p className="font-mono text-[11px] opacity-80 pt-1 text-zinc-500 dark:text-zinc-400">
+                  {testFeedback.detail}
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => setTestFeedback(null)}
+            className="p-1 rounded text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 shrink-0"
+            title="Dismiss notification"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-[550px] w-full text-left text-xs">
+          <table className="min-w-[620px] w-full text-left text-xs">
             <thead className="bg-zinc-50 dark:bg-zinc-900/80 text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
               <tr>
                 <th className="px-4 py-3">Channel Name</th>
@@ -147,17 +240,33 @@ export default function NotificationsPage() {
                       </button>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => {
-                          if (confirm(`Delete channel "${ch.name}"?`)) {
-                            deleteMutation.mutate(ch.id);
-                          }
-                        }}
-                        className="p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 transition-colors"
-                        title="Delete channel"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleTest(ch.id, ch)}
+                          disabled={testingId === ch.id}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-all shadow-xs disabled:opacity-50"
+                          title="Send a test notification alert to this destination"
+                        >
+                          {testingId === ch.id ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-[var(--accent)]" />
+                          ) : (
+                            <Send className="w-3.5 h-3.5 text-[var(--accent)]" />
+                          )}
+                          <span>{testingId === ch.id ? 'Sending...' : 'Test Notification'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete channel "${ch.name}"?`)) {
+                              deleteMutation.mutate(ch.id);
+                            }
+                          }}
+                          className="p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 transition-colors"
+                          title="Delete channel"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

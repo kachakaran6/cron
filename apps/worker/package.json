@@ -15,11 +15,13 @@
     "bullmq": "^5.7.9",
     "drizzle-orm": "^0.30.10",
     "ipaddr.js": "^2.2.0",
+    "nodemailer": "^10.0.9",
     "prom-client": "^15.1.2",
     "undici": "^6.18.2"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",
+    "@types/nodemailer": "^8.0.1",
     "tsc-watch": "^6.2.0",
     "typescript": "^5.4.5"
   }

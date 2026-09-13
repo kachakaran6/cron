@@ -24,6 +24,12 @@ export class NotificationsController {
     return this.notificationsService.create(req.organizationId, dto);
   }
 
+  @Post(':id/test')
+  @ApiOperation({ summary: 'Send a test notification to verify channel' })
+  async test(@Req() req: any, @Param('id') id: string) {
+    return this.notificationsService.sendTest(id, req.organizationId);
+  }
+
   @Patch(':id/toggle')
   @ApiOperation({ summary: 'Toggle notification channel state' })
   async toggle(@Req() req: any, @Param('id') id: string, @Body('enabled') enabled: boolean) {

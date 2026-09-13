@@ -272,6 +272,20 @@ export async function deleteNotificationChannel(id: string): Promise<{ success: 
   });
 }
 
+export async function testNotificationChannel(id: string): Promise<{
+  success: boolean;
+  message: string;
+  channelId?: string;
+  channelName?: string;
+  type?: string;
+  destination?: string;
+  detail?: string;
+}> {
+  return request(`${API_BASE}/notifications/${id}/test`, {
+    method: 'POST',
+  });
+}
+
 // ── Admin API ────────────────────────────────────────────────────────────────
 
 export async function fetchAdminStats(): Promise<any> {

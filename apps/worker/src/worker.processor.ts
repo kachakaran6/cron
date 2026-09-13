@@ -5,6 +5,7 @@ import { db, cronJobRuns, cronJobs } from '@cron-saas/database';
 import { eq } from 'drizzle-orm';
 import os from 'node:os';
 import { jobExecutionsTotal, jobExecutionDuration } from './metrics';
+import { checkAndDispatchAlerts } from './notifications/alert-dispatcher';
 
 const workerId = `${os.hostname()}-${process.pid}`;
 
@@ -56,6 +57,15 @@ export function createWorker() {
 
         // 4. Update last_run_at on cron_jobs
         await db.update(cronJobs).set({ lastRunAt: startedAt }).where(eq(cronJobs.id, cronJobId));
+
+        // 5. Check and dispatch alert notifications (failure threshold or recovery)
+        await checkAndDispatchAlerts(
+          cronJobId,
+          isSuccess ? 'SUCCESS' : 'FAILED',
+          statusCode,
+          isSuccess ? null : `HTTP Status ${statusCode}`,
+          durationMs
+        );
       } catch (err: any) {
         const finishedAt = new Date();
         const durationMs = finishedAt.getTime() - startedAt.getTime();
@@ -74,6 +84,15 @@ export function createWorker() {
           attemptNumber: attempt || 1,
           workerId,
         });
+
+        // Check and dispatch alert notifications on execution failure
+        await checkAndDispatchAlerts(
+          cronJobId,
+          'FAILED',
+          null,
+          err.message || 'Execution error',
+          durationMs
+        );
 
         throw err;
       }
