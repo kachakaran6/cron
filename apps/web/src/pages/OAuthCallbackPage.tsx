@@ -9,12 +9,13 @@ export default function OAuthCallbackPage() {
 
   useEffect(() => {
     const token = searchParams.get('token');
+    const errorMsg = searchParams.get('error');
+
     if (token) {
       setAuthToken(token);
-      window.location.href = '/dashboard/schedules';
+      window.location.replace('/dashboard/schedules');
     } else {
-      const errorMsg = searchParams.get('error') || 'OAuth authentication failed';
-      navigate(`/login?error=${encodeURIComponent(errorMsg)}`);
+      navigate(`/login?error=${encodeURIComponent(errorMsg || 'OAuth authentication failed')}`, { replace: true });
     }
   }, [searchParams, navigate]);
 

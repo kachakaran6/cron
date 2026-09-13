@@ -265,20 +265,32 @@ export class AuthService {
     };
   }
 
+  private cleanEnv(val?: string): string {
+    if (!val) return '';
+    let cleaned = val.trim();
+    if (
+      (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+      (cleaned.startsWith("'") && cleaned.endsWith("'"))
+    ) {
+      cleaned = cleaned.slice(1, -1).trim();
+    }
+    return cleaned;
+  }
+
   private get googleClientId(): string {
-    return process.env.GOOGLE_CLIENT_ID || '';
+    return this.cleanEnv(process.env.GOOGLE_CLIENT_ID);
   }
 
   private get googleClientSecret(): string {
-    return process.env.GOOGLE_CLIENT_SECRET || '';
+    return this.cleanEnv(process.env.GOOGLE_CLIENT_SECRET);
   }
 
   private get githubClientId(): string {
-    return process.env.GITHUB_CLIENT_ID || '';
+    return this.cleanEnv(process.env.GITHUB_CLIENT_ID);
   }
 
   private get githubClientSecret(): string {
-    return process.env.GITHUB_CLIENT_SECRET || '';
+    return this.cleanEnv(process.env.GITHUB_CLIENT_SECRET);
   }
 
   getGoogleAuthUrl(state?: string, req?: any): string {
@@ -295,6 +307,11 @@ export class AuthService {
     const clientId = this.googleClientId;
     const clientSecret = this.googleClientSecret;
 
+    if (!clientId || !clientSecret) {
+      this.logger.error(`Google OAuth credentials missing: clientId=${Boolean(clientId)}, clientSecret=${Boolean(clientSecret)}`);
+      throw new UnauthorizedException('Google OAuth credentials not configured on server. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Coolify environment variables.');
+    }
+
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -309,7 +326,8 @@ export class AuthService {
 
     const tokenData = await tokenRes.json();
     if (!tokenRes.ok || !tokenData.access_token) {
-      throw new UnauthorizedException(tokenData.error_description || 'Failed to exchange Google OAuth authorization code');
+      this.logger.error(`Google token exchange failed (${tokenRes.status}): ${JSON.stringify(tokenData)}`);
+      throw new UnauthorizedException(tokenData.error_description || tokenData.error || 'Failed to exchange Google OAuth authorization code');
     }
 
     const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -344,6 +362,11 @@ export class AuthService {
     const clientId = this.githubClientId;
     const clientSecret = this.githubClientSecret;
 
+    if (!clientId || !clientSecret) {
+      this.logger.error(`GitHub OAuth credentials missing: clientId=${Boolean(clientId)}, clientSecret=${Boolean(clientSecret)}`);
+      throw new UnauthorizedException('GitHub OAuth credentials not configured on server. Please set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in Coolify environment variables.');
+    }
+
     const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: {
@@ -360,7 +383,8 @@ export class AuthService {
 
     const tokenData = await tokenRes.json();
     if (!tokenRes.ok || !tokenData.access_token) {
-      throw new UnauthorizedException(tokenData.error_description || 'Failed to exchange GitHub OAuth authorization code');
+      this.logger.error(`GitHub token exchange failed (${tokenRes.status}): ${JSON.stringify(tokenData)}`);
+      throw new UnauthorizedException(tokenData.error_description || tokenData.error || 'Failed to exchange GitHub OAuth authorization code');
     }
 
     const userRes = await fetch('https://api.github.com/user', {

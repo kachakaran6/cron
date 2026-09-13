@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Lock, Mail, User as UserIcon, ArrowRight, Sun, Moon, AlertTriangle, Eye, EyeOff } from 'lucide-react';
@@ -7,6 +7,7 @@ import { Footer } from '../components/layout/Footer';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { register, oauthLogin } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
@@ -16,6 +17,17 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const urlError = searchParams.get('error');
+    if (urlError) {
+      try {
+        setError(decodeURIComponent(urlError));
+      } catch {
+        setError(urlError);
+      }
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

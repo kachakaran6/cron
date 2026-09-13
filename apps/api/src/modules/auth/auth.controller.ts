@@ -53,15 +53,22 @@ export class AuthController {
   async googleCallback(
     @Query('code') code: string,
     @Query('state') state: string,
+    @Query('error') error: string,
+    @Query('error_description') errorDescription: string,
     @Req() req: any,
     @Res() res: Response,
   ) {
+    const frontendUrl = getFrontendUrl(req, state);
+    if (error) {
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(errorDescription || error)}`);
+    }
+    if (!code) {
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('No authorization code returned from Google')}`);
+    }
     try {
       const result = await this.authService.handleGoogleCallback(code, req);
-      const frontendUrl = getFrontendUrl(req, state);
       return res.redirect(`${frontendUrl}/oauth-callback?token=${result.token}`);
     } catch (err: any) {
-      const frontendUrl = getFrontendUrl(req, state);
       return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(err.message || 'Google OAuth failed')}`);
     }
   }
@@ -83,15 +90,22 @@ export class AuthController {
   async githubCallback(
     @Query('code') code: string,
     @Query('state') state: string,
+    @Query('error') error: string,
+    @Query('error_description') errorDescription: string,
     @Req() req: any,
     @Res() res: Response,
   ) {
+    const frontendUrl = getFrontendUrl(req, state);
+    if (error) {
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(errorDescription || error)}`);
+    }
+    if (!code) {
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('No authorization code returned from GitHub')}`);
+    }
     try {
       const result = await this.authService.handleGithubCallback(code, req);
-      const frontendUrl = getFrontendUrl(req, state);
       return res.redirect(`${frontendUrl}/oauth-callback?token=${result.token}`);
     } catch (err: any) {
-      const frontendUrl = getFrontendUrl(req, state);
       return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(err.message || 'GitHub OAuth failed')}`);
     }
   }
