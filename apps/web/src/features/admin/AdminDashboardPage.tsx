@@ -46,21 +46,26 @@ import {
   deleteAdminUser,
 } from '../../services/api';
 
-type AdminTab = 'overview' | 'state' | 'analytics' | 'users' | 'logs' | 'config';
+import AdminGumroadHub from './AdminGumroadHub';
+import AdminPlansPricingHub from './AdminPlansPricingHub';
+
+type AdminTab = 'overview' | 'state' | 'analytics' | 'users' | 'logs' | 'config' | 'gumroad' | 'plans';
 
 export default function AdminDashboardPage() {
   const queryClient = useQueryClient();
   const { tab } = useParams<{ tab?: string }>();
   const navigate = useNavigate();
 
-  const initialTab: AdminTab = (tab && ['overview', 'state', 'analytics', 'users', 'logs', 'config'].includes(tab))
+  const validTabs: AdminTab[] = ['overview', 'state', 'analytics', 'users', 'logs', 'config', 'gumroad', 'plans'];
+
+  const initialTab: AdminTab = tab && validTabs.includes(tab as AdminTab)
     ? (tab as AdminTab)
     : 'overview';
 
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
 
   useEffect(() => {
-    if (tab && ['overview', 'state', 'analytics', 'users', 'logs', 'config'].includes(tab)) {
+    if (tab && validTabs.includes(tab as AdminTab)) {
       setActiveTab(tab as AdminTab);
     } else if (!tab) {
       setActiveTab('overview');
@@ -123,10 +128,19 @@ export default function AdminDashboardPage() {
     },
   });
 
+  const [planSuccessMsg, setPlanSuccessMsg] = useState<string | null>(null);
+
   const planMutation = useMutation({
     mutationFn: ({ userId, planId }: { userId: string; planId: string }) => updateAdminUserPlan(userId, planId),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['user-subscription'] });
+      setPlanSuccessMsg(`User plan successfully updated to ${variables.planId.toUpperCase()}!`);
+      setTimeout(() => setPlanSuccessMsg(null), 4000);
+    },
+    onError: (err: any) => {
+      alert(`Failed to update user plan: ${err?.message || 'Server error'}`);
     },
   });
 
@@ -230,6 +244,20 @@ export default function AdminDashboardPage() {
 
       {/* Active Page View Content */}
       <div className="space-y-6">
+          {/* ── PLANS & PRICING MANAGEMENT HUB ────────────────────────────── */}
+          {activeTab === 'plans' && (
+            <div className="animate-in fade-in duration-200">
+              <AdminPlansPricingHub />
+            </div>
+          )}
+
+          {/* ── GUMROAD & MRR HUB ────────────────────────────────────────────── */}
+          {activeTab === 'gumroad' && (
+            <div className="animate-in fade-in duration-200">
+              <AdminGumroadHub />
+            </div>
+          )}
+
           {/* ── PAGE 1: OVERVIEW ────────────────────────────────────────────── */}
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-in fade-in duration-200">
@@ -702,6 +730,13 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
+              {planSuccessMsg && (
+                <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span>{planSuccessMsg}</span>
+                </div>
+              )}
+
               <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 overflow-hidden shadow-xs">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
@@ -760,15 +795,22 @@ export default function AdminDashboardPage() {
                                 {u.organization?.name || 'Personal'}
                               </div>
                               <select
-                                value={u.planId}
+                                value={u.planId || 'free'}
+                                disabled={planMutation.isPending}
                                 onChange={(e) =>
                                   planMutation.mutate({ userId: u.id, planId: e.target.value })
                                 }
-                                className="mt-0.5 bg-transparent text-[11px] font-mono text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 rounded px-1.5 py-0.5"
+                                className="mt-1 bg-white dark:bg-zinc-900 text-[11px] font-mono font-medium text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 rounded px-2 py-1 shadow-2xs focus:ring-1 focus:ring-[var(--accent)] cursor-pointer disabled:opacity-50"
                               >
-                                <option value="free">free plan</option>
-                                <option value="pro">pro plan</option>
-                                <option value="enterprise">enterprise plan</option>
+                                <option value="free" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
+                                  Free Starter (5 jobs, 60s)
+                                </option>
+                                <option value="pro" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
+                                  Pro Platform (500 jobs, 10s)
+                                </option>
+                                <option value="annual" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
+                                  Annual Pass (1,000 jobs, 5s)
+                                </option>
                               </select>
                             </td>
 

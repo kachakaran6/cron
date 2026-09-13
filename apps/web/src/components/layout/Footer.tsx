@@ -104,6 +104,11 @@ export const Footer: React.FC<FooterProps> = ({ dark = true }) => {
             </h3>
             <ul className="space-y-2 font-medium">
               <li>
+                <Link to="/pricing" className="hover:text-emerald-500 transition-colors">
+                  Pricing &amp; Plans
+                </Link>
+              </li>
+              <li>
                 <Link to="/docs" className="hover:text-emerald-500 transition-colors">
                   Documentation & Guides
                 </Link>

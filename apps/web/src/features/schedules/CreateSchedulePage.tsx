@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Play, Trash2, Plus, CheckCircle2, Shield, Bell, Clock, Globe, Settings2, Sliders } from 'lucide-react';
-import { createJob } from '../../services/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Play, Trash2, Plus, CheckCircle2, Shield, Bell, Clock, Globe, Settings2, Sliders, AlertTriangle, Sparkles } from 'lucide-react';
+import { createJob, fetchJobs, fetchUserSubscription } from '../../services/api';
 import { CodeBlock } from '../../components/ui/CodeBlock';
 
 const PRESET_SCHEDULES = [
@@ -70,6 +70,21 @@ export default function CreateSchedulePage() {
   const [testResult, setTestResult] = useState<any>(null);
   const [isTesting, setIsTesting] = useState(false);
 
+  const { data: jobs } = useQuery({
+    queryKey: ['cron-schedules'],
+    queryFn: fetchJobs,
+  });
+
+  const { data: subscription } = useQuery({
+    queryKey: ['user-subscription'],
+    queryFn: fetchUserSubscription,
+  });
+
+  const isPro = subscription?.isPro ?? false;
+  const maxJobs = subscription?.capabilities?.maxJobs ?? (isPro ? 500 : 5);
+  const currentJobsCount = jobs?.length || 0;
+  const isAtLimit = !isPro && currentJobsCount >= maxJobs;
+
   const mutation = useMutation({
     mutationFn: createJob,
     onSuccess: () => {
@@ -114,9 +129,20 @@ export default function CreateSchedulePage() {
     e.preventDefault();
     setErrorMessage('');
 
+    if (isAtLimit) {
+      setErrorMessage(`You have reached the ${maxJobs}-job limit for the Free Starter plan. Upgrade to Pro to create up to 500 active schedules.`);
+      return;
+    }
+
     const trimmedName = name.trim();
     if (!trimmedName) {
       setErrorMessage('Cronjob title is required');
+      return;
+    }
+
+    const parts = schedule.trim().split(/\s+/);
+    if (parts.length === 6 && !isPro) {
+      setErrorMessage('Sub-minute execution intervals (under 60s) require a Pro or Annual subscription. Please use an interval of 1 minute or higher on the Free Starter plan.');
       return;
     }
 
@@ -204,6 +230,24 @@ export default function CreateSchedulePage() {
           <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mt-0.5">Create cronjob</h1>
         </div>
       </div>
+
+      {isAtLimit && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>
+              <strong>Free Starter Limit Reached ({currentJobsCount}/{maxJobs} jobs):</strong> You've reached your maximum of 5 active cron schedules. Upgrade to Pro to unlock 500 jobs, 10s intervals, and 30-day logs.
+            </span>
+          </div>
+          <Link
+            to="/dashboard/billing"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded bg-amber-600 hover:bg-amber-700 text-white font-semibold transition-colors shrink-0 text-center"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Upgrade to Pro</span>
+          </Link>
+        </div>
+      )}
 
       {errorMessage && (
         <div className="p-3.5 rounded-md border border-rose-300 dark:border-rose-800/80 bg-rose-50 dark:bg-rose-950/40 text-xs font-medium text-rose-700 dark:text-rose-300 shadow-xs">
@@ -611,10 +655,10 @@ export default function CreateSchedulePage() {
 
           <button
             type="submit"
-            disabled={mutation.isPending}
+            disabled={mutation.isPending || isAtLimit}
             className="flex items-center justify-center px-5 py-2.5 sm:py-2 btn-accent font-semibold text-xs rounded-md shadow-sm transition-all disabled:opacity-50 w-full sm:w-auto text-center"
           >
-            {mutation.isPending ? 'Saving & Scheduling...' : 'Create and activate'}
+            {mutation.isPending ? 'Saving & Scheduling...' : isAtLimit ? 'Plan Limit Reached (5/5)' : 'Create and activate'}
           </button>
         </div>
 

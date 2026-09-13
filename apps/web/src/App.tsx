@@ -28,6 +28,9 @@ import SettingsPage from './features/settings/SettingsPage';
 import AdminDashboardPage from './features/admin/AdminDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 
+import PricingPage from './pages/PricingPage';
+import BillingPage from './features/billing/BillingPage';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -45,6 +48,7 @@ export default function App() {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<LandingPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
@@ -64,6 +68,7 @@ export default function App() {
                   <Route path="monitors" element={<MonitorsListPage />} />
                   <Route path="notifications" element={<NotificationsPage />} />
                   <Route path="api-keys" element={<ApiKeysPage />} />
+                  <Route path="billing" element={<BillingPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="admin" element={<AdminDashboardPage />} />
                   <Route path="admin/:tab" element={<AdminDashboardPage />} />

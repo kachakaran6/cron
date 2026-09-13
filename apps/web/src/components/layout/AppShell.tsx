@@ -24,6 +24,8 @@ import {
   Users,
   Terminal,
   Sliders,
+  CreditCard,
+  Sparkles,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -50,11 +52,9 @@ export default function AppShell() {
   }, []);
 
   const toggleSidebar = () => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem('samast_sidebar_collapsed', String(next));
-      return next;
-    });
+    const nextState = !sidebarCollapsed;
+    setSidebarCollapsed(nextState);
+    localStorage.setItem('samast_sidebar_collapsed', String(nextState));
   };
 
   interface NavItem {
@@ -67,9 +67,11 @@ export default function AppShell() {
 
   const isAdmin =
     user?.role === 'admin' ||
+    user?.email?.toLowerCase() === 'kachak331@gmail.com' ||
     user?.email?.toLowerCase() === 'kachakaran@gmail.com' ||
     user?.email?.toLowerCase() === 'kachakaran6@gmail.com' ||
     user?.email?.toLowerCase() === 'kachakaran06@gmail.com';
+  const isDeveloperAdmin = isAdmin;
 
   const baseNavItems: NavItem[] = [
     { label: 'Overview', to: '/dashboard', icon: LayoutGrid, exact: true },
@@ -78,11 +80,14 @@ export default function AppShell() {
     { label: 'Monitors', to: '/dashboard/monitors', icon: ShieldCheck },
     { label: 'Notifications', to: '/dashboard/notifications', icon: Bell },
     { label: 'API Keys', to: '/dashboard/api-keys', icon: Key },
+    { label: 'Billing & Pro', to: '/dashboard/billing', icon: CreditCard },
     { label: 'Settings', to: '/dashboard/settings', icon: Settings },
   ];
 
   const adminSubNavItems: NavItem[] = [
     { label: 'Admin Overview', to: '/dashboard/admin/overview', icon: Shield },
+    { label: 'Plans & Pricing', to: '/dashboard/admin/plans', icon: Sparkles },
+    { label: 'Gumroad & MRR', to: '/dashboard/admin/gumroad', icon: CreditCard },
     { label: 'System State', to: '/dashboard/admin/state', icon: Server },
     { label: 'System Analytics', to: '/dashboard/admin/analytics', icon: BarChart3 },
     { label: 'User Directory', to: '/dashboard/admin/users', icon: Users },
@@ -190,6 +195,14 @@ export default function AppShell() {
 
                 {/* Quick Navigation */}
                 <div className="py-1">
+                  <Link
+                    to="/dashboard/billing"
+                    onClick={() => setProfileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                  >
+                    <CreditCard className="w-4 h-4 text-indigo-500" />
+                    <span>Billing &amp; Pro Plan</span>
+                  </Link>
                   <Link
                     to="/dashboard/settings"
                     onClick={() => setProfileMenuOpen(false)}

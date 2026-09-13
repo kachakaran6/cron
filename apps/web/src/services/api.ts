@@ -346,3 +346,219 @@ export async function deleteAdminUser(userId: string): Promise<{ success: boolea
     method: 'DELETE',
   });
 }
+
+// ── Billing & Gumroad API ──────────────────────────────────────────────────
+
+export interface UserSubscriptionDTO {
+  plan: 'FREE' | 'PRO';
+  billingStatus: string;
+  gumroadStatus: string | null;
+  isPro: boolean;
+  isGracePeriod: boolean;
+  subscribedSince: string | null;
+  expiresAt: string | null;
+  lastSyncedAt: string | null;
+  licenseKeyMasked: string;
+  hasLicenseKey: boolean;
+  capabilities?: {
+    plan: 'FREE' | 'PRO' | 'ANNUAL';
+    maxJobs: number;
+    minIntervalSeconds: number;
+    historyRetentionDays: number;
+    maxNotificationChannels: number;
+    maxStatusPages: number;
+  };
+  account: {
+    productName: string;
+    purchaseEmailMasked: string;
+    customerName: string | null;
+    status: string;
+    renewalDate: string | null;
+    endedDate: string | null;
+    manageUrl: string;
+  } | null;
+}
+
+export interface PublicPricingTierDTO {
+  id: string;
+  name: string;
+  priceMonthly: number;
+  priceYearly: number;
+  priceMonthlyInr?: number;
+  priceYearlyInr?: number;
+  currency: string;
+  description: string;
+  features: string[];
+  highlight?: boolean;
+  ctaText: string;
+  checkoutUrl?: string;
+  checkoutUrlAnnual?: string;
+  checkoutUrlInMonthly?: string;
+  checkoutUrlInAnnual?: string;
+}
+
+export interface PlanQuotasDTO {
+  maxJobs: number;
+  minIntervalSeconds: number;
+  historyRetentionDays: number;
+  maxNotificationChannels: number;
+  maxStatusPages: number;
+  maxMonthlyEmails: number;
+  maxApiKeys: number;
+  maxTeamMembers: number;
+  timeoutMs: number;
+}
+
+export interface PlanFeaturesDTO {
+  customHeaders: boolean;
+  webhookAlerts: boolean;
+  priorityQueue: boolean;
+  autoRetries: boolean;
+  exportLogs: boolean;
+  customDomainStatus: boolean;
+  dedicatedWorker: boolean;
+  siemIntegration: boolean;
+  slaGuarantee: boolean;
+  apiAccess: boolean;
+  customSmtp: boolean;
+  taxInvoicing: boolean;
+}
+
+export interface PlanDefinitionDTO {
+  id: 'free' | 'pro' | 'annual' | 'enterprise';
+  name: string;
+  description: string;
+  enabled: boolean;
+  quotas: PlanQuotasDTO;
+  features: PlanFeaturesDTO;
+}
+
+export interface PricingPermalinksDTO {
+  usdMonthly: string;
+  usdAnnual: string;
+  inrMonthly: string;
+  inrAnnual: string;
+}
+
+export interface PricingConfigDTO {
+  usdMonthly: number;
+  usdAnnual: number;
+  inrMonthly: number;
+  inrAnnual: number;
+  inrMonthlyBase: number;
+  gstRatePercent: number;
+  discountTagUsd: string;
+  discountTagInr: string;
+  permalinks: PricingPermalinksDTO;
+  enterpriseNotice: string;
+}
+
+export interface PlansAndPricingSettingsDTO {
+  plans: {
+    free: PlanDefinitionDTO;
+    pro: PlanDefinitionDTO;
+    annual: PlanDefinitionDTO;
+    enterprise: PlanDefinitionDTO;
+  };
+  pricing: PricingConfigDTO;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export async function fetchUserSubscription(): Promise<UserSubscriptionDTO> {
+  return request(`${API_BASE}/user/subscription`);
+}
+
+export async function verifyGumroadLicense(licenseKey: string): Promise<{
+  success: boolean;
+  plan: 'FREE' | 'PRO';
+  status: string;
+  message: string;
+  licenseKeyMasked: string;
+  isGracePeriod?: boolean;
+}> {
+  return request(`${API_BASE}/user/subscription/verify-license`, {
+    method: 'POST',
+    body: JSON.stringify({ licenseKey }),
+  });
+}
+
+export async function syncGumroadSubscription(): Promise<any> {
+  return request(`${API_BASE}/user/subscription/sync`, {
+    method: 'POST',
+  });
+}
+
+export async function fetchGumroadTiers(email?: string): Promise<{
+  tiers: PublicPricingTierDTO[];
+  pricing?: PricingConfigDTO;
+  plans?: {
+    free: PlanDefinitionDTO;
+    pro: PlanDefinitionDTO;
+    annual: PlanDefinitionDTO;
+    enterprise: PlanDefinitionDTO;
+  };
+  productPermalink: string;
+  productPermalinkAnnual?: string;
+  productPermalinkInMonthly?: string;
+  productPermalinkInAnnual?: string;
+}> {
+  const query = email ? `?email=${encodeURIComponent(email)}` : '';
+  return request(`${API_BASE}/gumroad/tiers${query}`);
+}
+
+export async function fetchAdminGumroad(): Promise<{
+  metrics: {
+    totalSubscribers: number;
+    activePro: number;
+    cancelledGracePeriod: number;
+    expired: number;
+    estimatedMrr: number;
+  };
+  config: {
+    productId: string;
+    productPermalink: string;
+    webhookSecretConfigured: boolean;
+  };
+  recentLogs: any[];
+  recentAccounts: any[];
+}> {
+  return request(`${API_BASE}/admin/gumroad`);
+}
+
+export async function updateAdminGumroadConfig(data: {
+  productId?: string;
+  productPermalink?: string;
+  webhookSecret?: string;
+}): Promise<any> {
+  return request(`${API_BASE}/admin/gumroad/config`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function fetchAdminPlansPricing(): Promise<PlansAndPricingSettingsDTO> {
+  return request(`${API_BASE}/admin/plans-pricing`);
+}
+
+export async function updateAdminPlansPricing(data: Partial<PlansAndPricingSettingsDTO>): Promise<{
+  success: boolean;
+  settings: PlansAndPricingSettingsDTO;
+  message: string;
+}> {
+  return request(`${API_BASE}/admin/plans-pricing`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function resetAdminPlansPricing(): Promise<{
+  success: boolean;
+  settings: PlansAndPricingSettingsDTO;
+  message: string;
+}> {
+  return request(`${API_BASE}/admin/plans-pricing/reset`, {
+    method: 'POST',
+  });
+}
+
