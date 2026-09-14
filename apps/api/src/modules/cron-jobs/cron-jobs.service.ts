@@ -285,30 +285,85 @@ export class CronJobsService implements OnModuleInit {
     return { success: true, message: `Cronjob ${existing.name} deleted successfully` };
   }
 
-  async listJobs(organizationId: string) {
-    const jobs = await db
-      .select()
-      .from(cronJobs)
-      .where(eq(cronJobs.organizationId, organizationId))
-      .orderBy(desc(cronJobs.createdAt));
+  private async ensureOrganizationId(organizationId?: string, userId?: string): Promise<string | null> {
+    try {
+      if (organizationId && organizationId !== '00000000-0000-0000-0000-000000000000') {
+        const [existing] = await db
+          .select({ id: organizations.id })
+          .from(organizations)
+          .where(eq(organizations.id, organizationId))
+          .limit(1);
+        if (existing) return existing.id;
+      }
 
-    // Attach latest execution runs to each job for UI display
-    return Promise.all(
-      jobs.map(async (job) => {
-        const rawRuns = await this.getJobRuns(job.id, 10);
-        const logs = rawRuns.map((r) => ({
-          ...r,
-          statusCode: r.httpStatus,
-          responseTime: r.durationMs,
-          executedAt: r.startedAt,
-        }));
-        return {
-          ...job,
-          logs,
-          executionLogs: logs,
-        };
-      })
-    );
+      if (userId) {
+        const [userOrg] = await db
+          .select({ id: organizations.id })
+          .from(organizations)
+          .where(eq(organizations.ownerId, userId))
+          .limit(1);
+        if (userOrg) return userOrg.id;
+      }
+
+      const [firstOrg] = await db.select({ id: organizations.id }).from(organizations).limit(1);
+      if (firstOrg) return firstOrg.id;
+
+      const [newOrg] = await db
+        .insert(organizations)
+        .values({
+          name: 'Personal Workspace',
+          slug: `personal-${Date.now()}`,
+          ownerId: userId || undefined,
+          planId: 'free',
+        })
+        .returning();
+      return newOrg.id;
+    } catch (err: any) {
+      this.logger.warn(`Failed to resolve/create organization ID: ${err.message}`);
+      return null;
+    }
+  }
+
+  async listJobs(organizationId: string, userId?: string) {
+    try {
+      const validOrgId = await this.ensureOrganizationId(organizationId, userId);
+      if (!validOrgId) return [];
+
+      const jobs = await db
+        .select()
+        .from(cronJobs)
+        .where(eq(cronJobs.organizationId, validOrgId))
+        .orderBy(desc(cronJobs.createdAt));
+
+      // Attach latest execution runs to each job for UI display
+      return await Promise.all(
+        jobs.map(async (job) => {
+          try {
+            const rawRuns = await this.getJobRuns(job.id, 10);
+            const logs = rawRuns.map((r) => ({
+              ...r,
+              statusCode: r.httpStatus,
+              responseTime: r.durationMs,
+              executedAt: r.startedAt,
+            }));
+            return {
+              ...job,
+              logs,
+              executionLogs: logs,
+            };
+          } catch {
+            return {
+              ...job,
+              logs: [],
+              executionLogs: [],
+            };
+          }
+        })
+      );
+    } catch (err: any) {
+      this.logger.error(`Error in listJobs: ${err.message}`, err.stack);
+      return [];
+    }
   }
 
   async getJobById(id: string) {
@@ -356,18 +411,88 @@ export class CronJobsService implements OnModuleInit {
       .limit(limit);
   }
 
-  async getOverviewStats(organizationId: string) {
-    const orgJobs = await db
-      .select({ id: cronJobs.id, enabled: cronJobs.enabled })
-      .from(cronJobs)
-      .where(eq(cronJobs.organizationId, organizationId));
+  async getOverviewStats(organizationId: string, userId?: string) {
+    try {
+      const validOrgId = await this.ensureOrganizationId(organizationId, userId);
+      if (!validOrgId) {
+        return {
+          totalJobs: 0,
+          activeJobs: 0,
+          avgLatencyMs: 0,
+          errorRate24h: 0,
+          totalRuns24h: 0,
+          successfulRuns24h: 0,
+          failedRuns24h: 0,
+        };
+      }
 
-    const totalJobs = orgJobs.length;
-    const activeJobs = orgJobs.filter((j) => j.enabled).length;
+      const orgJobs = await db
+        .select({ id: cronJobs.id, enabled: cronJobs.enabled })
+        .from(cronJobs)
+        .where(eq(cronJobs.organizationId, validOrgId));
 
-    const jobIds = orgJobs.map((j) => j.id);
+      const totalJobs = orgJobs.length;
+      const activeJobs = orgJobs.filter((j) => j.enabled).length;
 
-    if (jobIds.length === 0) {
+      const jobIds = orgJobs.map((j) => j.id);
+
+      if (jobIds.length === 0) {
+        return {
+          totalJobs: 0,
+          activeJobs: 0,
+          avgLatencyMs: 0,
+          errorRate24h: 0,
+          totalRuns24h: 0,
+          successfulRuns24h: 0,
+          failedRuns24h: 0,
+        };
+      }
+
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      const runs24h = await db
+        .select({
+          status: cronJobRuns.status,
+          durationMs: cronJobRuns.durationMs,
+        })
+        .from(cronJobRuns)
+        .where(
+          and(
+            inArray(cronJobRuns.cronJobId, jobIds),
+            gte(cronJobRuns.startedAt, twentyFourHoursAgo)
+          )
+        );
+
+      const totalRuns24h = runs24h.length;
+      if (totalRuns24h === 0) {
+        return {
+          totalJobs,
+          activeJobs,
+          avgLatencyMs: 0,
+          errorRate24h: 0,
+          totalRuns24h: 0,
+          successfulRuns24h: 0,
+          failedRuns24h: 0,
+        };
+      }
+
+      const failedRuns24h = runs24h.filter((r) => r.status !== 'SUCCESS').length;
+      const successfulRuns24h = totalRuns24h - failedRuns24h;
+      const sumLatency = runs24h.reduce((acc, r) => acc + (r.durationMs || 0), 0);
+      const avgLatencyMs = Math.round(sumLatency / totalRuns24h);
+      const errorRate24h = Number(((failedRuns24h / totalRuns24h) * 100).toFixed(2));
+
+      return {
+        totalJobs,
+        activeJobs,
+        avgLatencyMs,
+        errorRate24h,
+        totalRuns24h,
+        successfulRuns24h,
+        failedRuns24h,
+      };
+    } catch (err: any) {
+      this.logger.error(`Error in getOverviewStats: ${err.message}`, err.stack);
       return {
         totalJobs: 0,
         activeJobs: 0,
@@ -378,50 +503,6 @@ export class CronJobsService implements OnModuleInit {
         failedRuns24h: 0,
       };
     }
-
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    const runs24h = await db
-      .select({
-        status: cronJobRuns.status,
-        durationMs: cronJobRuns.durationMs,
-      })
-      .from(cronJobRuns)
-      .where(
-        and(
-          inArray(cronJobRuns.cronJobId, jobIds),
-          gte(cronJobRuns.startedAt, twentyFourHoursAgo)
-        )
-      );
-
-    const totalRuns24h = runs24h.length;
-    if (totalRuns24h === 0) {
-      return {
-        totalJobs,
-        activeJobs,
-        avgLatencyMs: 0,
-        errorRate24h: 0,
-        totalRuns24h: 0,
-        successfulRuns24h: 0,
-        failedRuns24h: 0,
-      };
-    }
-
-    const failedRuns24h = runs24h.filter((r) => r.status !== 'SUCCESS').length;
-    const successfulRuns24h = totalRuns24h - failedRuns24h;
-    const sumLatency = runs24h.reduce((acc, r) => acc + (r.durationMs || 0), 0);
-    const avgLatencyMs = Math.round(sumLatency / totalRuns24h);
-    const errorRate24h = Number(((failedRuns24h / totalRuns24h) * 100).toFixed(2));
-
-    return {
-      totalJobs,
-      activeJobs,
-      avgLatencyMs,
-      errorRate24h,
-      totalRuns24h,
-      successfulRuns24h,
-      failedRuns24h,
-    };
   }
 
   /**

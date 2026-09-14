@@ -23,13 +23,13 @@ export class CronJobsController {
   @Get()
   @ApiOperation({ summary: 'List all cron jobs for the organization' })
   async list(@Req() req: any) {
-    return this.cronJobsService.listJobs(req.organizationId);
+    return this.cronJobsService.listJobs(req.organizationId, req.userId);
   }
 
   @Get('overview-stats')
   @ApiOperation({ summary: 'Get real-time overview metrics and stats for the organization' })
   async getOverviewStats(@Req() req: any) {
-    return this.cronJobsService.getOverviewStats(req.organizationId);
+    return this.cronJobsService.getOverviewStats(req.organizationId, req.userId);
   }
 
   @Get(':id')
