@@ -1,4 +1,4 @@
-import { db, cronJobs, cronJobRuns, notificationChannels, subscriptions, organizations } from '@cron-saas/database';
+import { db, cronJobs, cronJobRuns, notificationChannels, subscriptions, organizations, users } from '@cron-saas/database';
 import { eq, and, desc } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import nodemailer from 'nodemailer';
@@ -74,7 +74,7 @@ export async function checkAndDispatchAlerts(
     if (!shouldAlert) return;
 
     // Fetch active notification channels for this organization
-    const channels = await db
+    let channels = await db
       .select()
       .from(notificationChannels)
       .where(
@@ -83,6 +83,36 @@ export async function checkAndDispatchAlerts(
           eq(notificationChannels.enabled, true)
         )
       );
+
+    if (!channels || channels.length === 0) {
+      const [org] = await db
+        .select({ ownerId: organizations.ownerId })
+        .from(organizations)
+        .where(eq(organizations.id, job.organizationId))
+        .limit(1);
+
+      if (org?.ownerId) {
+        const [owner] = await db
+          .select({ email: users.email, name: users.name })
+          .from(users)
+          .where(eq(users.id, org.ownerId))
+          .limit(1);
+
+        if (owner?.email) {
+          channels = [
+            {
+              id: 'fallback-owner-email',
+              organizationId: job.organizationId,
+              name: owner.name ? `${owner.name} (Account Email)` : owner.email,
+              type: 'email',
+              config: { target: owner.email },
+              enabled: true,
+              createdAt: new Date(),
+            } as any,
+          ];
+        }
+      }
+    }
 
     if (!channels || channels.length === 0) return;
 

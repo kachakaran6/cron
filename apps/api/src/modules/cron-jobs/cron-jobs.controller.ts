@@ -26,6 +26,12 @@ export class CronJobsController {
     return this.cronJobsService.listJobs(req.organizationId);
   }
 
+  @Get('overview-stats')
+  @ApiOperation({ summary: 'Get real-time overview metrics and stats for the organization' })
+  async getOverviewStats(@Req() req: any) {
+    return this.cronJobsService.getOverviewStats(req.organizationId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get details for a specific cron job' })
   async getOne(@Param('id') id: string) {

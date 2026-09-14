@@ -26,7 +26,7 @@ export default function ExecutionsListPage() {
         jobName: j.name,
         jobUrl: j.url,
         method: j.method || 'GET',
-        statusCode: l.statusCode || l.httpStatus || 200,
+        statusCode: l.statusCode ?? l.httpStatus ?? null,
         responseTime: l.responseTime || l.durationMs || 0,
         executedAt: l.executedAt || l.startedAt || new Date().toISOString(),
       }))
@@ -168,7 +168,7 @@ export default function ExecutionsListPage() {
               {!isLoading &&
                 filteredLogs.map((log: any, idx: number) => {
                   const format = detectResponseType(log.responseBody || log.errorMessage || '', log.contentType);
-                  const isFail = log.status === 'FAILED' || (log.statusCode && log.statusCode >= 400);
+                  const isFail = log.status === 'FAILED' || log.status === 'BLOCKED_SSRF' || log.status === 'TIMED_OUT' || (log.statusCode && log.statusCode >= 400);
 
                   return (
                     <tr
@@ -189,15 +189,21 @@ export default function ExecutionsListPage() {
                         {log.jobUrl}
                       </td>
                       <td className="px-4 py-3 font-bold">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[11px] ${
-                            isFail
-                              ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800'
-                              : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
-                          }`}
-                        >
-                          {log.statusCode || 200}
-                        </span>
+                        {log.statusCode ? (
+                          <span
+                            className={`px-2 py-0.5 rounded text-[11px] ${
+                              isFail
+                                ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800'
+                                : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                            }`}
+                          >
+                            {log.statusCode}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[11px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700">
+                            N/A
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
                         {log.responseTime}ms

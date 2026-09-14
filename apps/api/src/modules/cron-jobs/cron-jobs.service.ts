@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger, OnModuleInit } from '@nestjs/common';
-import { db, cronJobs, cronJobRuns, organizations, notificationChannels } from '@cron-saas/database';
-import { eq, desc, and, lte, gte, count } from 'drizzle-orm';
+import { db, cronJobs, cronJobRuns, organizations, notificationChannels, users } from '@cron-saas/database';
+import { eq, desc, and, lte, gte, count, inArray } from 'drizzle-orm';
 import * as cronParser from 'cron-parser';
 import { Queue } from 'bullmq';
 import { CreateCronJobDto } from './dto/create-cron-job.dto';
@@ -350,6 +350,74 @@ export class CronJobsService implements OnModuleInit {
       .limit(limit);
   }
 
+  async getOverviewStats(organizationId: string) {
+    const orgJobs = await db
+      .select({ id: cronJobs.id, enabled: cronJobs.enabled })
+      .from(cronJobs)
+      .where(eq(cronJobs.organizationId, organizationId));
+
+    const totalJobs = orgJobs.length;
+    const activeJobs = orgJobs.filter((j) => j.enabled).length;
+
+    const jobIds = orgJobs.map((j) => j.id);
+
+    if (jobIds.length === 0) {
+      return {
+        totalJobs: 0,
+        activeJobs: 0,
+        avgLatencyMs: 0,
+        errorRate24h: 0,
+        totalRuns24h: 0,
+        successfulRuns24h: 0,
+        failedRuns24h: 0,
+      };
+    }
+
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const runs24h = await db
+      .select({
+        status: cronJobRuns.status,
+        durationMs: cronJobRuns.durationMs,
+      })
+      .from(cronJobRuns)
+      .where(
+        and(
+          inArray(cronJobRuns.cronJobId, jobIds),
+          gte(cronJobRuns.startedAt, twentyFourHoursAgo)
+        )
+      );
+
+    const totalRuns24h = runs24h.length;
+    if (totalRuns24h === 0) {
+      return {
+        totalJobs,
+        activeJobs,
+        avgLatencyMs: 0,
+        errorRate24h: 0,
+        totalRuns24h: 0,
+        successfulRuns24h: 0,
+        failedRuns24h: 0,
+      };
+    }
+
+    const failedRuns24h = runs24h.filter((r) => r.status !== 'SUCCESS').length;
+    const successfulRuns24h = totalRuns24h - failedRuns24h;
+    const sumLatency = runs24h.reduce((acc, r) => acc + (r.durationMs || 0), 0);
+    const avgLatencyMs = Math.round(sumLatency / totalRuns24h);
+    const errorRate24h = Number(((failedRuns24h / totalRuns24h) * 100).toFixed(2));
+
+    return {
+      totalJobs,
+      activeJobs,
+      avgLatencyMs,
+      errorRate24h,
+      totalRuns24h,
+      successfulRuns24h,
+      failedRuns24h,
+    };
+  }
+
   /**
    * Dispatches the HTTP call directly, enforces anti-SSRF protections, records
    * execution run metrics in PostgreSQL, and updates the job's lastRunAt.
@@ -568,7 +636,7 @@ export class CronJobsService implements OnModuleInit {
       }
 
       // 2. Fetch active notification channels for this organization
-      const channels = await db
+      let channels = await db
         .select()
         .from(notificationChannels)
         .where(
@@ -577,6 +645,36 @@ export class CronJobsService implements OnModuleInit {
             eq(notificationChannels.enabled, true)
           )
         );
+
+      if (channels.length === 0) {
+        const [org] = await db
+          .select({ ownerId: organizations.ownerId })
+          .from(organizations)
+          .where(eq(organizations.id, job.organizationId))
+          .limit(1);
+
+        if (org?.ownerId) {
+          const [owner] = await db
+            .select({ email: users.email, name: users.name })
+            .from(users)
+            .where(eq(users.id, org.ownerId))
+            .limit(1);
+
+          if (owner?.email) {
+            channels = [
+              {
+                id: 'fallback-owner-email',
+                organizationId: job.organizationId,
+                name: owner.name ? `${owner.name} (Account Email)` : owner.email,
+                type: 'email',
+                config: { target: owner.email },
+                enabled: true,
+                createdAt: new Date(),
+              } as any,
+            ];
+          }
+        }
+      }
 
       if (channels.length === 0) return;
 

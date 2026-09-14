@@ -1,19 +1,29 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Clock, Activity, AlertTriangle, Plus, ArrowRight } from 'lucide-react';
-import { fetchJobs } from '../../services/api';
+import { Clock, Activity, AlertTriangle, Plus, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { fetchJobs, fetchOverviewStats } from '../../services/api';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { TableSkeleton } from '../../components/ui/Skeleton';
 
 export default function OverviewPage() {
-  const { data: jobs, isLoading } = useQuery({
+  const { data: jobs, isLoading: jobsLoading } = useQuery({
     queryKey: ['cron-schedules'],
     queryFn: fetchJobs,
   });
 
-  const activeCount = jobs?.filter(j => j.enabled).length || 0;
-  const totalCount = jobs?.length || 0;
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['overview-stats'],
+    queryFn: fetchOverviewStats,
+    refetchInterval: 10000,
+  });
+
+  const activeCount = stats ? stats.activeJobs : (jobs?.filter(j => j.enabled).length || 0);
+  const totalCount = stats ? stats.totalJobs : (jobs?.length || 0);
+  const avgLatency = stats ? stats.avgLatencyMs : 0;
+  const errorRate = stats ? stats.errorRate24h : 0;
+
+  const isLoading = jobsLoading || statsLoading;
 
   return (
     <div className="space-y-6">
@@ -50,17 +60,21 @@ export default function OverviewPage() {
             <Activity className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
           </div>
           <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 font-mono">
-            &lt; 15ms <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">avg latency</span>
+            {avgLatency > 0 ? `${avgLatency}ms` : '< 15ms'} <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">avg latency</span>
           </div>
         </div>
 
         <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none">
           <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 font-mono mb-2">
             <span>ERROR RATE</span>
-            <AlertTriangle className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
+            {errorRate > 0 ? (
+              <AlertTriangle className="w-4 h-4 text-rose-500" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            )}
           </div>
-          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-            0.00% <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">last 24h</span>
+          <div className={`text-2xl font-bold font-mono ${errorRate > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+            {errorRate.toFixed(2)}% <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">last 24h</span>
           </div>
         </div>
       </div>

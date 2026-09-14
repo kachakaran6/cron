@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { db, notificationChannels } from '@cron-saas/database';
+import { db, notificationChannels, organizations, users } from '@cron-saas/database';
 import { eq, and, desc } from 'drizzle-orm';
 import { CreateNotificationChannelDto } from './dto/create-notification-channel.dto';
 import { cleanEnv } from '../auth/auth-url.util';
@@ -24,11 +24,44 @@ export class NotificationsService {
   constructor(private readonly entitlementsService: EntitlementsService) {}
 
   async list(organizationId: string) {
-    return db
+    const existing = await db
       .select()
       .from(notificationChannels)
       .where(eq(notificationChannels.organizationId, organizationId))
       .orderBy(desc(notificationChannels.createdAt));
+
+    if (existing.length === 0) {
+      // Auto-create default owner email channel if none exists
+      const [org] = await db
+        .select({ ownerId: organizations.ownerId })
+        .from(organizations)
+        .where(eq(organizations.id, organizationId))
+        .limit(1);
+
+      if (org?.ownerId) {
+        const [owner] = await db
+          .select({ email: users.email, name: users.name })
+          .from(users)
+          .where(eq(users.id, org.ownerId))
+          .limit(1);
+
+        if (owner?.email) {
+          const [autoCreated] = await db
+            .insert(notificationChannels)
+            .values({
+              organizationId,
+              name: `Account Email (${owner.email})`,
+              type: 'email',
+              config: { target: owner.email },
+              enabled: true,
+            })
+            .returning();
+          return [autoCreated];
+        }
+      }
+    }
+
+    return existing;
   }
 
   async create(organizationId: string, dto: CreateNotificationChannelDto) {

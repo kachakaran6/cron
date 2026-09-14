@@ -115,6 +115,20 @@ export async function apiGetMe(): Promise<{ user: { id: string; email: string; n
 
 // ── Jobs API ─────────────────────────────────────────────────────────────────
 
+export interface OverviewStatsDTO {
+  totalJobs: number;
+  activeJobs: number;
+  avgLatencyMs: number;
+  errorRate24h: number;
+  totalRuns24h: number;
+  successfulRuns24h: number;
+  failedRuns24h: number;
+}
+
+export async function fetchOverviewStats(): Promise<OverviewStatsDTO> {
+  return request(`${API_BASE}/jobs/overview-stats`);
+}
+
 export async function fetchJobs(): Promise<any[]> {
   return request(`${API_BASE}/jobs`);
 }
