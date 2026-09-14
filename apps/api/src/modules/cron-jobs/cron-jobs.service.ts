@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger, OnModuleInit } from '@nestjs/common';
 import { db, cronJobs, cronJobRuns, organizations, notificationChannels, users } from '@cron-saas/database';
-import { eq, desc, and, lte, gte, count, inArray } from 'drizzle-orm';
+import { eq, desc, and, lte, gte, count, inArray, or } from 'drizzle-orm';
 import * as cronParser from 'cron-parser';
 import { Queue } from 'bullmq';
 import { CreateCronJobDto } from './dto/create-cron-job.dto';
@@ -324,16 +324,69 @@ export class CronJobsService implements OnModuleInit {
     }
   }
 
-  async listJobs(organizationId: string, userId?: string) {
-    try {
-      const validOrgId = await this.ensureOrganizationId(organizationId, userId);
-      if (!validOrgId) return [];
+  private async getUserCronJobs(organizationId?: string, userId?: string) {
+    const orgIds = new Set<string>();
+    if (organizationId && organizationId !== '00000000-0000-0000-0000-000000000000') {
+      orgIds.add(organizationId);
+    }
 
-      const jobs = await db
+    if (userId) {
+      try {
+        const userOrgs = await db
+          .select({ id: organizations.id })
+          .from(organizations)
+          .where(eq(organizations.ownerId, userId));
+        userOrgs.forEach((o) => orgIds.add(o.id));
+      } catch (err: any) {
+        this.logger.warn(`Failed to fetch user organizations: ${err.message}`);
+      }
+    }
+
+    if (orgIds.size === 0) {
+      try {
+        const [firstOrg] = await db.select({ id: organizations.id }).from(organizations).limit(1);
+        if (firstOrg) orgIds.add(firstOrg.id);
+      } catch (err: any) {
+        this.logger.warn(`Failed to fetch fallback organization: ${err.message}`);
+      }
+    }
+
+    const orgIdArray = Array.from(orgIds);
+    const conditions: any[] = [];
+
+    if (orgIdArray.length === 1) {
+      conditions.push(eq(cronJobs.organizationId, orgIdArray[0]));
+    } else if (orgIdArray.length > 1) {
+      conditions.push(inArray(cronJobs.organizationId, orgIdArray));
+    }
+
+    if (userId) {
+      conditions.push(eq(cronJobs.createdById, userId));
+    }
+
+    let whereClause;
+    if (conditions.length === 0) {
+      whereClause = undefined;
+    } else if (conditions.length === 1) {
+      whereClause = conditions[0];
+    } else {
+      whereClause = or(...conditions);
+    }
+
+    if (whereClause) {
+      return db
         .select()
         .from(cronJobs)
-        .where(eq(cronJobs.organizationId, validOrgId))
+        .where(whereClause)
         .orderBy(desc(cronJobs.createdAt));
+    }
+
+    return db.select().from(cronJobs).orderBy(desc(cronJobs.createdAt)).limit(100);
+  }
+
+  async listJobs(organizationId: string, userId?: string) {
+    try {
+      const jobs = await this.getUserCronJobs(organizationId, userId);
 
       // Attach latest execution runs to each job for UI display
       return await Promise.all(
@@ -413,23 +466,7 @@ export class CronJobsService implements OnModuleInit {
 
   async getOverviewStats(organizationId: string, userId?: string) {
     try {
-      const validOrgId = await this.ensureOrganizationId(organizationId, userId);
-      if (!validOrgId) {
-        return {
-          totalJobs: 0,
-          activeJobs: 0,
-          avgLatencyMs: 0,
-          errorRate24h: 0,
-          totalRuns24h: 0,
-          successfulRuns24h: 0,
-          failedRuns24h: 0,
-        };
-      }
-
-      const orgJobs = await db
-        .select({ id: cronJobs.id, enabled: cronJobs.enabled })
-        .from(cronJobs)
-        .where(eq(cronJobs.organizationId, validOrgId));
+      const orgJobs = await this.getUserCronJobs(organizationId, userId);
 
       const totalJobs = orgJobs.length;
       const activeJobs = orgJobs.filter((j) => j.enabled).length;
