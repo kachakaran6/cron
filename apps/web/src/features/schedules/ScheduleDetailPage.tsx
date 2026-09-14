@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Play, Edit3, Trash2, Shield, Bell, CheckCircle2, Clock, Globe } from 'lucide-react';
-import { fetchJobById, triggerJobExecution, deleteJob } from '../../services/api';
+import { fetchJobById, triggerJobExecution, deleteJob, fetchNotificationChannels } from '../../services/api';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { CodeBlock } from '../../components/ui/CodeBlock';
 import ResponsePreviewModal from '../../components/ui/ResponsePreviewModal';
@@ -19,6 +19,11 @@ export default function ScheduleDetailPage() {
     queryKey: ['schedule-detail', id],
     queryFn: () => fetchJobById(id!),
     enabled: !!id,
+  });
+
+  const { data: allChannels } = useQuery({
+    queryKey: ['notification-channels'],
+    queryFn: fetchNotificationChannels,
   });
 
   const triggerMutation = useMutation({
@@ -200,12 +205,13 @@ export default function ScheduleDetailPage() {
             </div>
           </div>
 
-          {/* Alerting Rules Summary */}
-          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-3">
+          {/* Alerting Rules & Channels Summary */}
+          <div className="p-4 sm:p-5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 shadow-sm dark:shadow-none space-y-4">
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-[var(--accent)]" />
-              <h3 className="text-xs font-mono uppercase text-zinc-700 dark:text-zinc-300 font-semibold">Configured Alert Rules</h3>
+              <h3 className="text-xs font-mono uppercase text-zinc-700 dark:text-zinc-300 font-semibold">Configured Alert Rules &amp; Destinations</h3>
             </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
                 <span className={`w-2 h-2 rounded-full ${job.notifyOnFailure !== false ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
@@ -223,6 +229,45 @@ export default function ScheduleDetailPage() {
                 <span className={`w-2 h-2 rounded-full ${job.notifyTlsExpiry ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
                 <span>Notify before TLS expiry ({job.tlsExpiryDays || 30} days)</span>
               </div>
+            </div>
+
+            <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800/80">
+              <div className="text-[11px] font-mono uppercase text-zinc-500 dark:text-zinc-400 mb-2 font-semibold">Assigned Alert Channels</div>
+              {(() => {
+                const chIds = (job as any).notificationChannelIds as string[] | undefined;
+                const isAll = !chIds || chIds.length === 0 || chIds.includes('ALL');
+                if (isAll) {
+                  return (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>All Workspace Channels (Dispatches to all active Email, Slack, Discord &amp; Webhooks)</span>
+                    </div>
+                  );
+                }
+                const assigned = (allChannels || []).filter((ch) => chIds.includes(ch.id));
+                if (assigned.length === 0) {
+                  return (
+                    <div className="text-xs text-zinc-500 font-mono">
+                      Specific channel IDs ({chIds.join(', ')})
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {assigned.map((ch) => (
+                      <span
+                        key={ch.id}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-800 dark:text-zinc-200 font-medium"
+                      >
+                        <span className="font-mono text-[10px] uppercase text-zinc-500 px-1 py-0.2 rounded bg-zinc-200 dark:bg-zinc-800">
+                          {ch.type}
+                        </span>
+                        <span>{ch.name}</span>
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

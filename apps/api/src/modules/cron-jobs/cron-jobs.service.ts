@@ -6,13 +6,17 @@ import { Queue } from 'bullmq';
 import { CreateCronJobDto } from './dto/create-cron-job.dto';
 import { UpdateCronJobDto } from './dto/update-cron-job.dto';
 import { EntitlementsService } from '../entitlements/entitlements.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class CronJobsService implements OnModuleInit {
   private readonly logger = new Logger(CronJobsService.name);
   private executionQueue: Queue | null = null;
 
-  constructor(private readonly entitlementsService: EntitlementsService) {}
+  constructor(
+    private readonly entitlementsService: EntitlementsService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /**
    * Initialize BullMQ queue lazily in lifecycle hook and launch the background
@@ -176,6 +180,7 @@ export class CronJobsService implements OnModuleInit {
         notifyOnDisable: dto.notifyOnDisable !== undefined ? dto.notifyOnDisable : true,
         notifyTlsExpiry: dto.notifyTlsExpiry !== undefined ? dto.notifyTlsExpiry : false,
         tlsExpiryDays: dto.tlsExpiryDays !== undefined ? dto.tlsExpiryDays : 30,
+        notificationChannelIds: dto.notificationChannelIds || [],
       })
       .returning();
 
@@ -249,6 +254,7 @@ export class CronJobsService implements OnModuleInit {
         ...(dto.notifyOnDisable !== undefined ? { notifyOnDisable: dto.notifyOnDisable } : {}),
         ...(dto.notifyTlsExpiry !== undefined ? { notifyTlsExpiry: dto.notifyTlsExpiry } : {}),
         ...(dto.tlsExpiryDays !== undefined ? { tlsExpiryDays: dto.tlsExpiryDays } : {}),
+        ...(dto.notificationChannelIds !== undefined ? { notificationChannelIds: dto.notificationChannelIds } : {}),
         updatedAt: new Date(),
       })
       .where(eq(cronJobs.id, id))
@@ -646,6 +652,12 @@ export class CronJobsService implements OnModuleInit {
           )
         );
 
+      // Filter channels if job specifies specific channel IDs
+      const selectedChannelIds = (job as any).notificationChannelIds as string[] | undefined;
+      if (Array.isArray(selectedChannelIds) && selectedChannelIds.length > 0 && !selectedChannelIds.includes('ALL')) {
+        channels = channels.filter((ch) => selectedChannelIds.includes(ch.id));
+      }
+
       if (channels.length === 0) {
         const [org] = await db
           .select({ ownerId: organizations.ownerId })
@@ -678,67 +690,38 @@ export class CronJobsService implements OnModuleInit {
 
       if (channels.length === 0) return;
 
-      // 3. Dispatch to all enabled channels
+      // 3. Dispatch to targeted enabled channels using NotificationsService
       for (const ch of channels) {
-        const targetUrl = ch.config?.target;
-        if (!targetUrl) continue;
-
         let alertTitle = '';
         let alertMessage = '';
+        let eventType: 'JOB_FAILED' | 'JOB_RECOVERED' | 'JOB_DISABLED' = 'JOB_FAILED';
+
         if (shouldDisable) {
+          eventType = 'JOB_DISABLED';
           alertTitle = `⛔ [Samast Cron] Job Disabled: ${job.name}`;
           alertMessage = `Job has been automatically disabled after ${consecutiveFailures} consecutive failures.\nLast error: ${run.errorMessage || 'HTTP failure'}\nTarget URL: ${job.url}`;
         } else if (isRecovery) {
+          eventType = 'JOB_RECOVERED';
           alertTitle = `✅ [Samast Cron] Recovered: ${job.name}`;
           alertMessage = `Job has recovered and is now succeeding with HTTP ${run.httpStatus} in ${run.durationMs}ms.\nTarget URL: ${job.url}`;
         } else {
+          eventType = 'JOB_FAILED';
           alertTitle = `🚨 [Samast Cron Alert] Job Failed: ${job.name}`;
           alertMessage = `Execution failed with ${run.status} (${run.httpStatus || 'Timeout'}). Consecutive failures: ${consecutiveFailures}.\nTarget URL: ${job.url}\nError: ${run.errorMessage || 'Unknown error'}`;
         }
 
-        const chType = (ch.type || '').toLowerCase();
-
         try {
-          if (chType === 'slack') {
-            await fetch(targetUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                text: `${alertTitle}\n${alertMessage}`,
-              }),
-            });
-          } else if (chType === 'discord') {
-            await fetch(targetUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                content: `**${alertTitle}**\n${alertMessage}`,
-              }),
-            });
-          } else {
-            // Webhook / Email endpoint
-            await fetch(targetUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                event: shouldDisable
-                  ? 'cronjob.disabled'
-                  : isRecovery
-                  ? 'cronjob.recovered'
-                  : 'cronjob.failed',
-                timestamp: new Date().toISOString(),
-                job: { id: job.id, name: job.name, url: job.url, schedule: job.schedule },
-                run: {
-                  status: run.status,
-                  httpStatus: run.httpStatus,
-                  durationMs: run.durationMs,
-                  errorMessage: run.errorMessage,
-                  consecutiveFailures,
-                },
-              }),
-            });
-          }
-          this.logger.log(`Dispatched alert to channel ${ch.name} (${ch.type}) for job ${job.id}`);
+          const res = await this.notificationsService.dispatch(ch, {
+            title: alertTitle,
+            message: alertMessage,
+            event: eventType as any,
+            timestamp: new Date().toISOString(),
+            jobName: job.name,
+            jobUrl: job.url,
+            statusCode: run.httpStatus,
+            errorMessage: run.errorMessage,
+          });
+          this.logger.log(`Dispatched alert to channel ${ch.name} (${ch.type}) for job ${job.id}: ${res.message}`);
         } catch (err: any) {
           this.logger.warn(`Failed to dispatch alert to ${ch.name}: ${err.message}`);
         }

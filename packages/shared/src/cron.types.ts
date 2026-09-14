@@ -19,6 +19,15 @@ export interface CronJobDTO {
   enabled: boolean;
   nextRunAt: string;
   lastRunAt?: string | null;
+  // Notification & alerting rules
+  notifyOnFailure?: boolean;
+  failureThreshold?: number;
+  notifyOnRecovery?: boolean;
+  notifyOnDisable?: boolean;
+  notifyTlsExpiry?: boolean;
+  tlsExpiryDays?: number;
+  notificationChannelIds?: string[];
+
   createdAt: string;
   updatedAt: string;
 }

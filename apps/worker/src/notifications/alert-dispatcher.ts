@@ -45,7 +45,7 @@ export async function checkAndDispatchAlerts(
       .from(cronJobRuns)
       .where(eq(cronJobRuns.cronJobId, cronJobId))
       .orderBy(desc(cronJobRuns.startedAt))
-      .limit(5);
+      .limit(15);
 
     const previousRun = recentRuns[1]; // run immediately before current one
 
@@ -54,8 +54,13 @@ export async function checkAndDispatchAlerts(
     let title = '';
     let message = '';
 
-    if (currentStatus === 'FAILED' && job.notifyOnFailure) {
-      const consecutiveFailures = recentRuns.filter((r) => r.status !== 'SUCCESS').length;
+    let consecutiveFailures = 0;
+    for (const r of recentRuns) {
+      if (r.status !== 'SUCCESS') consecutiveFailures++;
+      else break;
+    }
+
+    if (currentStatus === 'FAILED' && job.notifyOnFailure !== false) {
       const threshold = job.failureThreshold || 1;
 
       if (consecutiveFailures >= threshold) {
@@ -64,7 +69,7 @@ export async function checkAndDispatchAlerts(
         title = `Job Execution Alert: ${job.name} Failed`;
         message = `Scheduled HTTP job "${job.name}" failed with ${errorMessage || `HTTP ${httpStatus}`} (${consecutiveFailures} consecutive failure(s)). Target URL: ${job.url}`;
       }
-    } else if (currentStatus === 'SUCCESS' && previousRun && previousRun.status === 'FAILED' && job.notifyOnRecovery) {
+    } else if (currentStatus === 'SUCCESS' && previousRun && previousRun.status === 'FAILED' && job.notifyOnRecovery !== false) {
       shouldAlert = true;
       eventType = 'JOB_RECOVERED';
       title = `Job Recovery Alert: ${job.name} Restored`;
@@ -83,6 +88,11 @@ export async function checkAndDispatchAlerts(
           eq(notificationChannels.enabled, true)
         )
       );
+
+    const selectedChannelIds = (job as any).notificationChannelIds as string[] | undefined;
+    if (Array.isArray(selectedChannelIds) && selectedChannelIds.length > 0 && !selectedChannelIds.includes('ALL')) {
+      channels = channels.filter((ch) => selectedChannelIds.includes(ch.id));
+    }
 
     if (!channels || channels.length === 0) {
       const [org] = await db
@@ -114,7 +124,12 @@ export async function checkAndDispatchAlerts(
       }
     }
 
-    if (!channels || channels.length === 0) return;
+    if (!channels || channels.length === 0) {
+      console.warn(`[AlertDispatcher] No active notification channels found for job ${job.name} (${job.id})`);
+      return;
+    }
+
+    console.log(`[AlertDispatcher] Dispatching ${eventType} alert for "${job.name}" to ${channels.length} channel(s)`);
 
     await Promise.allSettled(
       channels.map(async (ch) => {

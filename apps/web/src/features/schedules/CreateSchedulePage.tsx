@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Play, Trash2, Plus, CheckCircle2, Shield, Bell, Clock, Globe, Settings2, Sliders, AlertTriangle, Sparkles } from 'lucide-react';
-import { createJob, fetchJobs, fetchUserSubscription } from '../../services/api';
+import { createJob, fetchJobs, fetchUserSubscription, fetchNotificationChannels } from '../../services/api';
 import { CodeBlock } from '../../components/ui/CodeBlock';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 
@@ -58,13 +58,16 @@ export default function CreateSchedulePage() {
   // Schedule
   const [schedule, setSchedule] = useState('*/5 * * * *');
 
-  // Notifications
+  // Notifications & Channels
   const [notifyOnFailure, setNotifyOnFailure] = useState(true);
   const [failureThreshold, setFailureThreshold] = useState(1);
   const [notifyOnRecovery, setNotifyOnRecovery] = useState(true);
   const [notifyOnDisable, setNotifyOnDisable] = useState(true);
   const [notifyTlsExpiry, setNotifyTlsExpiry] = useState(false);
   const [tlsExpiryDays, setTlsExpiryDays] = useState(30);
+
+  const [channelSelectionMode, setChannelSelectionMode] = useState<'ALL' | 'CUSTOM'>('ALL');
+  const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>([]);
 
   // Testing & Feedback
   const [errorMessage, setErrorMessage] = useState('');
@@ -74,6 +77,11 @@ export default function CreateSchedulePage() {
   const { data: jobs } = useQuery({
     queryKey: ['cron-schedules'],
     queryFn: fetchJobs,
+  });
+
+  const { data: channels } = useQuery({
+    queryKey: ['notification-channels'],
+    queryFn: fetchNotificationChannels,
   });
 
   const { data: subscription } = useQuery({
@@ -187,6 +195,7 @@ export default function CreateSchedulePage() {
       notifyOnDisable,
       notifyTlsExpiry,
       tlsExpiryDays,
+      notificationChannelIds: channelSelectionMode === 'ALL' ? [] : selectedChannelIds,
     });
   };
 
@@ -633,6 +642,116 @@ export default function CreateSchedulePage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Destination Notification Channels Picker */}
+          <div className="pt-4 mt-2 border-t border-zinc-200 dark:border-zinc-800/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Notification Destination Channels</span>
+                <p className="text-[11px] text-zinc-500">Choose which configured alert channels should be notified when this job triggers an alert.</p>
+              </div>
+              <Link to="/dashboard/notifications" className="text-[11px] text-[var(--accent)] hover:underline font-medium shrink-0">
+                Manage Channels &rarr;
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div
+                onClick={() => setChannelSelectionMode('ALL')}
+                className={`flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-all ${
+                  channelSelectionMode === 'ALL'
+                    ? 'border-[var(--accent)] bg-[var(--accent)]/5 dark:bg-[var(--accent)]/10 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="channelMode"
+                  checked={channelSelectionMode === 'ALL'}
+                  onChange={() => setChannelSelectionMode('ALL')}
+                  className="mt-0.5 text-[var(--accent)] focus:ring-[var(--accent)]"
+                />
+                <div>
+                  <div className="font-semibold text-zinc-900 dark:text-zinc-100">All Workspace Channels (Default)</div>
+                  <p className="text-[11px] text-zinc-500 mt-0.5 leading-normal">
+                    Automatically dispatch alerts to all active Email, Slack, Discord &amp; Webhook channels in your workspace.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setChannelSelectionMode('CUSTOM')}
+                className={`flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-all ${
+                  channelSelectionMode === 'CUSTOM'
+                    ? 'border-[var(--accent)] bg-[var(--accent)]/5 dark:bg-[var(--accent)]/10 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="channelMode"
+                  checked={channelSelectionMode === 'CUSTOM'}
+                  onChange={() => setChannelSelectionMode('CUSTOM')}
+                  className="mt-0.5 text-[var(--accent)] focus:ring-[var(--accent)]"
+                />
+                <div>
+                  <div className="font-semibold text-zinc-900 dark:text-zinc-100">Select Specific Channels</div>
+                  <p className="text-[11px] text-zinc-500 mt-0.5 leading-normal">
+                    Manually pick specific notification channels to receive alerts for this cronjob only.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {channelSelectionMode === 'CUSTOM' && (
+              <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/40 space-y-2 mt-2">
+                {(!channels || channels.length === 0) ? (
+                  <div className="text-xs text-zinc-500 py-3 text-center space-y-1">
+                    <p>No active notification channels found in your workspace.</p>
+                    <Link to="/dashboard/notifications" className="text-[var(--accent)] underline font-medium">
+                      + Add your Email, Slack, or Webhook channels in Notification Settings
+                    </Link>
+                  </div>
+                ) : (
+                  channels.map((ch: any) => {
+                    const isChecked = selectedChannelIds.includes(ch.id);
+                    return (
+                      <label
+                        key={ch.id}
+                        className={`flex items-center justify-between p-2.5 rounded-md border cursor-pointer text-xs transition-all ${
+                          isChecked
+                            ? 'border-emerald-500/50 bg-emerald-500/10 text-zinc-900 dark:text-zinc-100'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedChannelIds([...selectedChannelIds, ch.id]);
+                              } else {
+                                setSelectedChannelIds(selectedChannelIds.filter((id) => id !== ch.id));
+                              }
+                            }}
+                            className="rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+                          />
+                          <span className="font-semibold text-zinc-900 dark:text-zinc-100">{ch.name}</span>
+                          <span className="font-mono text-[10px] uppercase px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                            {ch.type}
+                          </span>
+                        </div>
+                        <span className="font-mono text-[11px] text-zinc-500 truncate max-w-[220px]">
+                          {ch.config?.target || '—'}
+                        </span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
         </div>
 

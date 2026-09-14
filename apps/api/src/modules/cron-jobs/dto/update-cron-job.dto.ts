@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsUrl, IsIn, IsOptional, IsInt, IsBoolean, Min, Max } from 'class-validator';
+import { IsString, IsUrl, IsIn, IsOptional, IsInt, IsBoolean, Min, Max, IsArray } from 'class-validator';
 
 export class UpdateCronJobDto {
   @ApiPropertyOptional({ example: 'Production Database Backup', description: 'Human readable job title' })
@@ -117,4 +117,9 @@ export class UpdateCronJobDto {
   @Min(1)
   @Max(365)
   tlsExpiryDays?: number;
+
+  @ApiPropertyOptional({ example: ['channel-uuid-1'], description: 'Specific notification channel IDs to alert' })
+  @IsOptional()
+  @IsArray()
+  notificationChannelIds?: string[];
 }

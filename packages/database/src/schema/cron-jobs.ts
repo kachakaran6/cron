@@ -36,6 +36,7 @@ export const cronJobs = pgTable('cron_jobs', {
   notifyOnDisable: boolean('notify_on_disable').default(true).notNull(),
   notifyTlsExpiry: boolean('notify_tls_expiry').default(false).notNull(),
   tlsExpiryDays: integer('tls_expiry_days').default(30).notNull(),
+  notificationChannelIds: jsonb('notification_channel_ids').$type<string[]>().default([]),
 
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
