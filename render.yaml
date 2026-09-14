@@ -1,0 +1,46 @@
+services:
+  # ── 1. API Web Service ──────────────────────────────────────────────────────
+  - type: web
+    name: samast-cron-api
+    env: node
+    plan: free
+    region: singapore
+    buildCommand: pnpm install && pnpm --filter @cron-saas/shared build && pnpm --filter @cron-saas/database build && pnpm --filter @cron-saas/api build
+    startCommand: node apps/api/dist/main.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        sync: false
+
+  # ── 2. Background Worker Service ────────────────────────────────────────────
+  - type: worker
+    name: samast-cron-worker
+    env: node
+    plan: free
+    region: singapore
+    buildCommand: pnpm install && pnpm --filter @cron-saas/shared build && pnpm --filter @cron-saas/database build && pnpm --filter @cron-saas/worker build
+    startCommand: node apps/worker/dist/main.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
