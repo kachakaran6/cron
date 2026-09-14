@@ -18,6 +18,7 @@ import {
   Globe,
   Layers,
   Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 
@@ -238,8 +239,8 @@ export default function ResponsePreviewModal({ log, onClose }: ResponsePreviewMo
     }
   }, [log.responseHeaders]);
 
-  const httpCode = log.statusCode || log.httpStatus || 200;
-  const isSuccess = httpCode >= 200 && httpCode < 300;
+  const httpCode = log.statusCode ?? log.httpStatus ?? null;
+  const isSuccess = (log.status === 'SUCCESS' || (!log.status && httpCode !== null && httpCode >= 200 && httpCode < 300)) && log.status !== 'FAILED' && log.status !== 'BLOCKED_SSRF' && log.status !== 'TIMED_OUT';
   const executedTime = log.executedAt || log.startedAt || new Date().toISOString();
   const duration = log.responseTime || log.durationMs || 0;
 
@@ -322,7 +323,7 @@ export default function ResponsePreviewModal({ log, onClose }: ResponsePreviewMo
                     ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
                     : 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800'
                 }`}>
-                  HTTP {httpCode}
+                  {httpCode !== null ? `HTTP ${httpCode}` : 'HTTP N/A (FAILED)'}
                 </span>
               </div>
               <p className="text-[11px] sm:text-xs text-zinc-500 font-mono truncate mt-0.5 flex items-center gap-1.5">
@@ -351,6 +352,21 @@ export default function ResponsePreviewModal({ log, onClose }: ResponsePreviewMo
           </div>
         </div>
 
+        {/* Execution Failure Banner if non-success */}
+        {!isSuccess && (
+          <div className="mx-4 sm:mx-5 mt-3 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs font-mono flex items-start gap-2.5 shadow-xs">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+            <div className="space-y-0.5 min-w-0">
+              <strong className="font-bold block text-rose-900 dark:text-rose-100">
+                Execution Failure Details:
+              </strong>
+              <p className="text-zinc-700 dark:text-zinc-300 font-sans text-xs break-words">
+                {log.errorMessage || (httpCode ? `Target server responded with HTTP status ${httpCode}` : 'Target endpoint failed to respond (DNS resolution, SSL error, or connection refused)')}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Execution Metadata Pill Strip */}
         <div className="px-4 sm:px-5 py-2 bg-zinc-100/50 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-zinc-600 dark:text-zinc-400 text-[11px] sm:text-xs">
@@ -375,7 +391,7 @@ export default function ResponsePreviewModal({ log, onClose }: ResponsePreviewMo
           </div>
 
           <div className="flex items-center gap-2">
-            <StatusBadge status={log.status === 'FAILED' ? 'failed' : 'success'} />
+            <StatusBadge status={!isSuccess ? 'failed' : 'success'} />
           </div>
         </div>
 

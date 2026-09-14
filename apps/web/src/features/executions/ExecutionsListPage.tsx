@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, RefreshCw, Search, Eye, Filter, Code2 } from 'lucide-react';
+import { Activity, RefreshCw, Search, Eye, Filter, Code2, AlertTriangle } from 'lucide-react';
 import { fetchJobs } from '../../services/api';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { TableSkeleton } from '../../components/ui/Skeleton';
@@ -182,11 +182,19 @@ export default function ExecutionsListPage() {
                       <td className="px-4 py-3 font-sans font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                         {log.jobName}
                       </td>
-                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 truncate max-w-xs">
-                        <span className="text-[10px] px-1 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 mr-1.5 font-bold">
-                          {log.method || 'GET'}
-                        </span>
-                        {log.jobUrl}
+                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 max-w-xs">
+                        <div className="flex items-center truncate">
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 mr-1.5 font-bold shrink-0">
+                            {log.method || 'GET'}
+                          </span>
+                          <span className="truncate">{log.jobUrl}</span>
+                        </div>
+                        {isFail && (
+                          <div className="text-[11px] text-rose-600 dark:text-rose-400 font-mono truncate mt-1 flex items-center gap-1 font-medium">
+                            <AlertTriangle className="w-3 h-3 shrink-0 text-rose-500" />
+                            <span className="truncate">{log.errorMessage || (log.statusCode ? `HTTP ${log.statusCode}` : 'Network / Connection error')}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 font-bold">
                         {log.statusCode ? (
