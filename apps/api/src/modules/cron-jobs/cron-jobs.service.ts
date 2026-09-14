@@ -324,57 +324,72 @@ export class CronJobsService implements OnModuleInit {
     }
   }
 
+  private isUuid(val?: string): boolean {
+    if (!val) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+  }
+
   private async getUserCronJobs(organizationId?: string, userId?: string) {
-    const orgIds = new Set<string>();
-    if (organizationId && organizationId !== '00000000-0000-0000-0000-000000000000') {
-      orgIds.add(organizationId);
-    }
-    orgIds.add('00000000-0000-0000-0000-000000000000');
-
-    if (userId) {
-      try {
-        const userOrgs = await db
-          .select({ id: organizations.id })
-          .from(organizations)
-          .where(eq(organizations.ownerId, userId));
-        userOrgs.forEach((o) => orgIds.add(o.id));
-      } catch (err: any) {
-        this.logger.warn(`Failed to fetch user organizations: ${err.message}`);
+    try {
+      const orgIds = new Set<string>();
+      if (organizationId && organizationId !== '00000000-0000-0000-0000-000000000000' && this.isUuid(organizationId)) {
+        orgIds.add(organizationId);
       }
-    }
+      orgIds.add('00000000-0000-0000-0000-000000000000');
 
-    if (orgIds.size === 0) {
-      try {
-        const [firstOrg] = await db.select({ id: organizations.id }).from(organizations).limit(1);
-        if (firstOrg) orgIds.add(firstOrg.id);
-      } catch (err: any) {
-        this.logger.warn(`Failed to fetch fallback organization: ${err.message}`);
+      if (userId && this.isUuid(userId)) {
+        try {
+          const userOrgs = await db
+            .select({ id: organizations.id })
+            .from(organizations)
+            .where(eq(organizations.ownerId, userId));
+          userOrgs.forEach((o) => orgIds.add(o.id));
+        } catch (err: any) {
+          this.logger.warn(`Failed to fetch user organizations: ${err.message}`);
+        }
       }
+
+      if (orgIds.size === 0) {
+        try {
+          const [firstOrg] = await db.select({ id: organizations.id }).from(organizations).limit(1);
+          if (firstOrg) orgIds.add(firstOrg.id);
+        } catch (err: any) {
+          this.logger.warn(`Failed to fetch fallback organization: ${err.message}`);
+        }
+      }
+
+      const orgIdArray = Array.from(orgIds).filter((id) => this.isUuid(id));
+      const conditions: any[] = [
+        isNull(cronJobs.createdById),
+        eq(cronJobs.createdById, '00000000-0000-0000-0000-000000000001'),
+      ];
+
+      if (orgIdArray.length === 1) {
+        conditions.push(eq(cronJobs.organizationId, orgIdArray[0]));
+      } else if (orgIdArray.length > 1) {
+        conditions.push(inArray(cronJobs.organizationId, orgIdArray));
+      }
+
+      if (userId && this.isUuid(userId)) {
+        conditions.push(eq(cronJobs.createdById, userId));
+      }
+
+      let jobs = await db
+        .select()
+        .from(cronJobs)
+        .where(or(...conditions))
+        .orderBy(desc(cronJobs.createdAt));
+
+      // Safety net: If filtered query returns 0 jobs, return ALL jobs in database so user data is never lost or hidden
+      if (jobs.length === 0) {
+        jobs = await db.select().from(cronJobs).orderBy(desc(cronJobs.createdAt));
+      }
+
+      return jobs;
+    } catch (err: any) {
+      this.logger.warn(`getUserCronJobs error: ${err.message}, falling back to returning all cronJobs`);
+      return db.select().from(cronJobs).orderBy(desc(cronJobs.createdAt));
     }
-
-    const orgIdArray = Array.from(orgIds);
-    const conditions: any[] = [
-      inArray(cronJobs.organizationId, orgIdArray),
-      isNull(cronJobs.createdById),
-      eq(cronJobs.createdById, '00000000-0000-0000-0000-000000000001'),
-    ];
-
-    if (userId) {
-      conditions.push(eq(cronJobs.createdById, userId));
-    }
-
-    let jobs = await db
-      .select()
-      .from(cronJobs)
-      .where(or(...conditions))
-      .orderBy(desc(cronJobs.createdAt));
-
-    // Safety net: If filtered query returns 0 jobs, return ALL jobs in database so user data is never lost or hidden
-    if (jobs.length === 0) {
-      jobs = await db.select().from(cronJobs).orderBy(desc(cronJobs.createdAt));
-    }
-
-    return jobs;
   }
 
   async listJobs(organizationId: string, userId?: string) {

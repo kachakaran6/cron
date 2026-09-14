@@ -59,21 +59,32 @@ export class CombinedAuthGuard implements CanActivate {
 
         // Auto-heal missing, dummy, or non-existent orgId in DB
         let validOrg = null;
-        if (req.organizationId && req.organizationId !== '00000000-0000-0000-0000-000000000000') {
-          [validOrg] = await db
-            .select({ id: organizations.id })
-            .from(organizations)
-            .where(eq(organizations.id, req.organizationId))
-            .limit(1);
+        if (req.organizationId && req.organizationId !== '00000000-0000-0000-0000-000000000000' && this.isUuid(req.organizationId)) {
+          try {
+            [validOrg] = await db
+              .select({ id: organizations.id })
+              .from(organizations)
+              .where(eq(organizations.id, req.organizationId))
+              .limit(1);
+          } catch {
+            validOrg = null;
+          }
         }
 
         if (!validOrg) {
           const userKey = req.userId || 'anon';
-          const [userOrg] = await db
-            .select({ id: organizations.id })
-            .from(organizations)
-            .where(eq(organizations.ownerId, userKey))
-            .limit(1);
+          let userOrg = null;
+          if (this.isUuid(userKey)) {
+            try {
+              [userOrg] = await db
+                .select({ id: organizations.id })
+                .from(organizations)
+                .where(eq(organizations.ownerId, userKey))
+                .limit(1);
+            } catch {
+              userOrg = null;
+            }
+          }
 
           if (userOrg) {
             req.organizationId = userOrg.id;
@@ -88,7 +99,7 @@ export class CombinedAuthGuard implements CanActivate {
                 .values({
                   name: `${req.userEmail?.split('@')[0] || 'Personal'}'s Organization`,
                   slug,
-                  ownerId: req.userId || undefined,
+                  ownerId: this.isUuid(req.userId) ? req.userId : undefined,
                   planId: 'free',
                 })
                 .returning();
@@ -125,5 +136,10 @@ export class CombinedAuthGuard implements CanActivate {
       return authHeader.substring(7);
     }
     return null;
+  }
+
+  private isUuid(val?: string): boolean {
+    if (!val) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
   }
 }
