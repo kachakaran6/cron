@@ -81,6 +81,7 @@ export default function AppShell() {
     { label: 'Notifications', to: '/dashboard/notifications', icon: Bell },
     { label: 'API Keys', to: '/dashboard/api-keys', icon: Key },
     { label: 'Billing & Pro', to: '/dashboard/billing', icon: CreditCard },
+    { label: 'Documentation', to: '/dashboard/docs', icon: BookOpen },
     { label: 'Settings', to: '/dashboard/settings', icon: Settings },
   ];
 

@@ -75,6 +75,7 @@ export default function App() {
                   <Route path="notifications" element={<NotificationsPage />} />
                   <Route path="api-keys" element={<ApiKeysPage />} />
                   <Route path="billing" element={<BillingPage />} />
+                  <Route path="docs" element={<DocsPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="admin" element={<AdminDashboardPage />} />
                   <Route path="admin/:tab" element={<AdminDashboardPage />} />
