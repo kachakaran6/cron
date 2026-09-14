@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger, OnModuleInit } from '@nestjs/common';
 import { db, cronJobs, cronJobRuns, organizations, notificationChannels, users } from '@cron-saas/database';
-import { eq, desc, and, lte, gte, count, inArray, or, isNull } from 'drizzle-orm';
+import { eq, desc, and, lte, gte, count, inArray, or, isNull, sql } from 'drizzle-orm';
 import * as cronParser from 'cron-parser';
 import { Queue } from 'bullmq';
 import { CreateCronJobDto } from './dto/create-cron-job.dto';
@@ -22,7 +22,13 @@ export class CronJobsService implements OnModuleInit {
    * Initialize BullMQ queue lazily in lifecycle hook and launch the background
    * scheduler ticker so scheduled and manual jobs execute reliably.
    */
-  onModuleInit() {
+  async onModuleInit() {
+    try {
+      await db.execute(sql`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS notification_channel_ids jsonb DEFAULT '[]'::jsonb;`);
+    } catch (err: any) {
+      this.logger.warn(`CronJobsService schema check note: ${err.message}`);
+    }
+
     try {
       this.executionQueue = new Queue('cron-execution-queue', {
         connection: {

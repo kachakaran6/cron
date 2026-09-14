@@ -102,6 +102,7 @@ async function runStartupMigrations(logger: Logger) {
     await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS notify_on_disable BOOLEAN NOT NULL DEFAULT true`;
     await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS notify_tls_expiry BOOLEAN NOT NULL DEFAULT false`;
     await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS tls_expiry_days INTEGER NOT NULL DEFAULT 30`;
+    await client`ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS notification_channel_ids JSONB DEFAULT '[]'::jsonb`;
     await client`CREATE INDEX IF NOT EXISTS cron_jobs_org_idx ON cron_jobs (organization_id)`;
     await client`CREATE INDEX IF NOT EXISTS cron_jobs_next_run_idx ON cron_jobs (enabled, next_run_at)`;
 
