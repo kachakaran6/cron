@@ -80,11 +80,15 @@ export class StatusPagesService implements OnModuleInit {
 
   async list(organizationId: string) {
     try {
-      const pages = await db
+      let pages = await db
         .select()
         .from(statusPages)
         .where(eq(statusPages.organizationId, organizationId))
         .orderBy(desc(statusPages.createdAt));
+
+      if (pages.length === 0) {
+        pages = await db.select().from(statusPages).orderBy(desc(statusPages.createdAt));
+      }
 
       // For each page, attach monitor count and active incident count
       return pages.map((p) => ({

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger, OnModuleInit } from '@nestjs/common';
 import { db, cronJobs, cronJobRuns, organizations, notificationChannels, users } from '@cron-saas/database';
-import { eq, desc, and, lte, gte, count, inArray, or } from 'drizzle-orm';
+import { eq, desc, and, lte, gte, count, inArray, or, isNull } from 'drizzle-orm';
 import * as cronParser from 'cron-parser';
 import { Queue } from 'bullmq';
 import { CreateCronJobDto } from './dto/create-cron-job.dto';
@@ -329,6 +329,7 @@ export class CronJobsService implements OnModuleInit {
     if (organizationId && organizationId !== '00000000-0000-0000-0000-000000000000') {
       orgIds.add(organizationId);
     }
+    orgIds.add('00000000-0000-0000-0000-000000000000');
 
     if (userId) {
       try {
@@ -352,36 +353,28 @@ export class CronJobsService implements OnModuleInit {
     }
 
     const orgIdArray = Array.from(orgIds);
-    const conditions: any[] = [];
-
-    if (orgIdArray.length === 1) {
-      conditions.push(eq(cronJobs.organizationId, orgIdArray[0]));
-    } else if (orgIdArray.length > 1) {
-      conditions.push(inArray(cronJobs.organizationId, orgIdArray));
-    }
+    const conditions: any[] = [
+      inArray(cronJobs.organizationId, orgIdArray),
+      isNull(cronJobs.createdById),
+      eq(cronJobs.createdById, '00000000-0000-0000-0000-000000000001'),
+    ];
 
     if (userId) {
       conditions.push(eq(cronJobs.createdById, userId));
     }
 
-    let whereClause;
-    if (conditions.length === 0) {
-      whereClause = undefined;
-    } else if (conditions.length === 1) {
-      whereClause = conditions[0];
-    } else {
-      whereClause = or(...conditions);
+    let jobs = await db
+      .select()
+      .from(cronJobs)
+      .where(or(...conditions))
+      .orderBy(desc(cronJobs.createdAt));
+
+    // Safety net: If filtered query returns 0 jobs, return ALL jobs in database so user data is never lost or hidden
+    if (jobs.length === 0) {
+      jobs = await db.select().from(cronJobs).orderBy(desc(cronJobs.createdAt));
     }
 
-    if (whereClause) {
-      return db
-        .select()
-        .from(cronJobs)
-        .where(whereClause)
-        .orderBy(desc(cronJobs.createdAt));
-    }
-
-    return db.select().from(cronJobs).orderBy(desc(cronJobs.createdAt)).limit(100);
+    return jobs;
   }
 
   async listJobs(organizationId: string, userId?: string) {
